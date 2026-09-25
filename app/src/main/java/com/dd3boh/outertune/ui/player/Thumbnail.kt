@@ -105,8 +105,19 @@ fun Thumbnail(
                     AnimatedContent(
                         targetState = mediaMetadata?.id,
                         transitionSpec = {
-                            (fadeIn(tween(500)) + scaleIn(initialScale = 0.92f, animationSpec = tween(500)))
-                                .togetherWith(fadeOut(tween(300)))
+                            (fadeIn(spring<Float>(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )) + scaleIn(
+                                initialScale = 0.92f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                )
+                            )).togetherWith(fadeOut(spring<Float>(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )))
                         },
                         label = "coverCrossfade"
                     ) { songId ->

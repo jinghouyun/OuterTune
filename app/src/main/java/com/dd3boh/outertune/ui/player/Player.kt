@@ -16,6 +16,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -898,7 +900,13 @@ fun PlayerBackground(
         AnimatedContent(
             targetState = mediaMetadata,
             transitionSpec = {
-                fadeIn(tween(1000)).togetherWith(fadeOut(tween(1000)))
+                fadeIn(spring<Float>(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessLow
+                )).togetherWith(fadeOut(spring<Float>(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )))
             }
         ) { metadata ->
             if (playerBackground == PlayerBackgroundStyle.BLUR) {
@@ -917,7 +925,13 @@ fun PlayerBackground(
         AnimatedContent(
             targetState = gradientColors,
             transitionSpec = {
-                fadeIn(tween(1000)).togetherWith(fadeOut(tween(1000)))
+                fadeIn(spring<Float>(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessLow
+                )).togetherWith(fadeOut(spring<Float>(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )))
             }
         ) { colors ->
             if (playerBackground == PlayerBackgroundStyle.GRADIENT && colors.size >= 2) {

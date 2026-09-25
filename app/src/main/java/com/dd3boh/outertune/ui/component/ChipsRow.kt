@@ -8,10 +8,9 @@
 
 package com.dd3boh.outertune.ui.component
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
@@ -81,14 +80,14 @@ fun <E> ChipsLazyRow(
     isLoading: (E) -> Boolean = { false }
 ) {
     val haptic = LocalHapticFeedback.current
-    val tween: FiniteAnimationSpec<Float> = tween(
-        durationMillis = 300,
-        easing = FastOutSlowInEasing
+    val chipSpring: FiniteAnimationSpec<Float> = spring(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessMedium
     )
 
-    val placementTween: FiniteAnimationSpec<IntOffset> = tween(
-        durationMillis = 300,
-        easing = LinearOutSlowInEasing
+    val placementSpring: FiniteAnimationSpec<IntOffset> = spring(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessMedium
     )
 
     LazyRow(
@@ -115,9 +114,9 @@ fun <E> ChipsLazyRow(
                 },
                 modifier = Modifier
                     .animateItem(
-                        fadeInSpec =  tween,
-                        placementSpec = placementTween,
-                        fadeOutSpec = tween
+                        fadeInSpec = chipSpring,
+                        placementSpec = placementSpring,
+                        fadeOutSpec = chipSpring
                     ),
                 trailingIcon = {
                     if (isLoading(value)) {

@@ -20,6 +20,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -627,28 +629,56 @@ class MainActivity : ComponentActivity() {
                                         .find { it.route == defaultOpenTab })?.route
                                         ?: Screens.Songs.route,
                                     enterTransition = {
-                                        fadeIn(tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
-                                            slideInHorizontally(
-                                                animationSpec = tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                                            ) { it / 12 }
+                                        fadeIn(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
+                                        ) + slideInHorizontally(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
+                                        ) { it / 14 }
                                     },
                                     exitTransition = {
-                                        fadeOut(tween(180, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) +
-                                            slideOutHorizontally(
-                                                animationSpec = tween(180, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
-                                            ) { -it / 12 }
+                                        fadeOut(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        ) + slideOutHorizontally(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        ) { -it / 14 }
                                     },
                                     popEnterTransition = {
-                                        fadeIn(tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
-                                            slideInHorizontally(
-                                                animationSpec = tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                                            ) { -it / 12 }
+                                        fadeIn(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
+                                        ) + slideInHorizontally(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
+                                        ) { -it / 14 }
                                     },
                                     popExitTransition = {
-                                        fadeOut(tween(180, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) +
-                                            slideOutHorizontally(
-                                                animationSpec = tween(180, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
-                                            ) { it / 12 }
+                                        fadeOut(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        ) + slideOutHorizontally(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        ) { it / 14 }
                                     },
                                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                                 )

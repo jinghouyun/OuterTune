@@ -2,7 +2,8 @@ package com.dd3boh.outertune.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
@@ -47,14 +48,30 @@ fun PlayingIndicator(
     }
 
     LaunchedEffect(isPlaying) {
-        animatables.forEach { animatable ->
+        animatables.forEachIndexed { index, animatable ->
             launch {
+                // Stagger the bars for a more organic wave effect
+                delay(index * 120L)
                 while (true) {
-                    if (isPlaying)
-                        animatable.animateTo(Random.nextFloat() * 0.9f + 0.1f)
-                    else
-                        animatable.animateTo(0.15f)
-                    delay(50)
+                    if (isPlaying) {
+                        animatable.animateTo(
+                            targetValue = Random.nextFloat() * 0.85f + 0.15f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        )
+                        delay(Random.nextLong(200, 500))
+                    } else {
+                        animatable.animateTo(
+                            targetValue = 0.15f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        )
+                        delay(100)
+                    }
                 }
             }
         }
@@ -91,8 +108,14 @@ fun PlayingIndicatorBox(
 ) {
     AnimatedVisibility(
         visible = isActive,
-        enter = fadeIn(tween(500)),
-        exit = fadeOut(tween(500))
+        enter = fadeIn(spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )),
+        exit = fadeOut(spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ))
     ) {
         Box(
             contentAlignment = Alignment.Center,
