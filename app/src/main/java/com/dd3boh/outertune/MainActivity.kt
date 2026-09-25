@@ -31,6 +31,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -58,11 +59,14 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.QueueMusic
@@ -437,58 +441,99 @@ class MainActivity : ComponentActivity() {
                                     drawerContainerColor = MaterialTheme.colorScheme.surface
                                 ) {
                                     Spacer(Modifier.height(40.dp))
-                                    Text(
-                                        text = "椒盐音乐",
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                                    )
+
+                                    // Top quick icon row (Salt Player style: export, theme, equalizer)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.Start
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Logout,
+                                            contentDescription = null,
+                                            tint = Color(0xFFE53935),
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .padding(end = 24.dp)
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Rounded.LightMode,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFFB300),
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .padding(end = 24.dp)
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Rounded.GraphicEq,
+                                            contentDescription = null,
+                                            tint = Color(0xFF1E88E5),
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+
                                     Spacer(Modifier.height(16.dp))
 
-                                    // Theme toggle row
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    // Theme options (vertical cards: follow system / light / dark)
+                                    androidx.compose.material3.Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 3.dp),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                                            containerColor = if (darkTheme == DarkMode.AUTO) MaterialTheme.colorScheme.primaryContainer
+                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                        ),
+                                        onClick = { onDarkThemeChange(DarkMode.AUTO) }
                                     ) {
-                                        androidx.compose.material3.Card(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(end = 6.dp),
-                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                            colors = androidx.compose.material3.CardDefaults.cardColors(
-                                                containerColor = if (!useDarkTheme) MaterialTheme.colorScheme.primaryContainer
-                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                            ),
-                                            onClick = { onDarkThemeChange(DarkMode.OFF) }
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Row(
-                                                modifier = Modifier.padding(16.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(Icons.Rounded.LightMode, null, modifier = Modifier.size(20.dp))
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("浅色")
-                                            }
+                                            Icon(Icons.Rounded.Android, null, modifier = Modifier.size(20.dp))
+                                            Spacer(Modifier.width(12.dp))
+                                            Text("跟随系统")
                                         }
-                                        androidx.compose.material3.Card(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(start = 6.dp),
-                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                            colors = androidx.compose.material3.CardDefaults.cardColors(
-                                                containerColor = if (useDarkTheme) MaterialTheme.colorScheme.primaryContainer
-                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                            ),
-                                            onClick = { onDarkThemeChange(DarkMode.ON) }
+                                    }
+                                    androidx.compose.material3.Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 3.dp),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                                            containerColor = if (darkTheme == DarkMode.OFF) MaterialTheme.colorScheme.primaryContainer
+                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                        ),
+                                        onClick = { onDarkThemeChange(DarkMode.OFF) }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Row(
-                                                modifier = Modifier.padding(16.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(Icons.Rounded.DarkMode, null, modifier = Modifier.size(20.dp))
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("深色")
-                                            }
+                                            Icon(Icons.Rounded.LightMode, null, modifier = Modifier.size(20.dp))
+                                            Spacer(Modifier.width(12.dp))
+                                            Text("浅色")
+                                        }
+                                    }
+                                    androidx.compose.material3.Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 3.dp),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                                            containerColor = if (darkTheme == DarkMode.ON) MaterialTheme.colorScheme.primaryContainer
+                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                        ),
+                                        onClick = { onDarkThemeChange(DarkMode.ON) }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(Icons.Rounded.DarkMode, null, modifier = Modifier.size(20.dp))
+                                            Spacer(Modifier.width(12.dp))
+                                            Text("深色")
                                         }
                                     }
 

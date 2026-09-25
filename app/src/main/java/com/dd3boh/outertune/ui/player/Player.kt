@@ -772,7 +772,7 @@ fun ControlsContent(
 
         Spacer(Modifier.height(20.dp))
 
-        // Secondary row: shuffle, repeat, timer, equalizer, queue, more
+        // Secondary row: shuffle, timer, equalizer, queue, more (Salt Player style: 5 icons)
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
@@ -787,22 +787,6 @@ fun ControlsContent(
                 enabled = playerConnection.player.currentMediaItem != null,
                 onClick = {
                     playerConnection.triggerShuffle()
-                    haptic.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-                }
-            )
-
-            ResizableIconButton(
-                icon = when (repeatMode) {
-                    REPEAT_MODE_OFF -> R.drawable.repeat_off
-                    REPEAT_MODE_ALL -> R.drawable.repeat_on
-                    REPEAT_MODE_ONE -> R.drawable.repeat_one
-                    else -> throw IllegalStateException()
-                },
-                modifier = Modifier.size(28.dp),
-                color = if (repeatMode != REPEAT_MODE_OFF) iconColor else iconColor.copy(alpha = 0.6f),
-                enabled = playerConnection.player.currentMediaItem != null,
-                onClick = {
-                    playerConnection.player.toggleRepeatMode()
                     haptic.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
                 }
             )
