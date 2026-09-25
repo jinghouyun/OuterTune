@@ -444,38 +444,7 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     Spacer(Modifier.height(40.dp))
 
-                                    // Top quick icon row (Salt Player style: export, theme, equalizer)
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 24.dp, vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.Start
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Logout,
-                                            contentDescription = null,
-                                            tint = Color(0xFFE53935),
-                                            modifier = Modifier
-                                                .size(28.dp)
-                                                .padding(end = 24.dp)
-                                        )
-                                        Icon(
-                                            imageVector = Icons.Rounded.LightMode,
-                                            contentDescription = null,
-                                            tint = Color(0xFFFFB300),
-                                            modifier = Modifier
-                                                .size(28.dp)
-                                                .padding(end = 24.dp)
-                                        )
-                                        Icon(
-                                            imageVector = Icons.Rounded.GraphicEq,
-                                            contentDescription = null,
-                                            tint = Color(0xFF1E88E5),
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-
-                                    Spacer(Modifier.height(16.dp))
+                                    Spacer(Modifier.height(8.dp))
 
                                     // Theme options (vertical cards: follow system / light / dark)
                                     androidx.compose.material3.Card(
