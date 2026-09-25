@@ -20,7 +20,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
@@ -30,7 +29,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -53,7 +51,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -102,13 +99,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -427,18 +421,8 @@ class MainActivity : ComponentActivity() {
 //                        onDispose { removeOnNewIntentListener(listener) }
 //                    }
 
-                    var drawerOpen by remember { mutableStateOf(false) }
+                    val drawerState = rememberDrawerState(DrawerValue.Closed)
                     val drawerScope = rememberCoroutineScope()
-
-                    // Salt Player style: content slides + scales together with drawer
-                    val drawerProgress by animateFloatAsState(
-                        targetValue = if (drawerOpen) 1f else 0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        label = "drawerProgress"
-                    )
 
                     CompositionLocalProvider(
                         LocalDatabase provides database,
@@ -449,23 +433,49 @@ class MainActivity : ComponentActivity() {
                         LocalDownloadUtil provides downloadUtil,
                         LocalShimmerTheme provides ShimmerTheme,
                         LocalSnackbarHostState provides snackbarHostState,
-                        LocalDrawerOpen provides { drawerOpen = true },
+                        LocalDrawerOpen provides { drawerScope.launch { drawerState.open() } },
                     ) {
 
-                        Box(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            // Bottom layer: drawer content
-                            Column(
-                                modifier = Modifier
-                                    .width(300.dp)
-                                    .fillMaxHeight()
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .verticalScroll(rememberScrollState())
-                            ) {
+                        ModalNavigationDrawer(
+                            drawerState = drawerState,
+                            drawerContent = {
+                                ModalDrawerSheet(
+                                    drawerContainerColor = MaterialTheme.colorScheme.surface
+                                ) {
                                     Spacer(Modifier.height(40.dp))
 
-                                    Spacer(Modifier.height(8.dp))
+                                    // Top quick icon row (Salt Player style: export, theme, equalizer)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.Start
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Logout,
+                                            contentDescription = null,
+                                            tint = Color(0xFFE53935),
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .padding(end = 24.dp)
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Rounded.LightMode,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFFB300),
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .padding(end = 24.dp)
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Rounded.GraphicEq,
+                                            contentDescription = null,
+                                            tint = Color(0xFF1E88E5),
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+
+                                    Spacer(Modifier.height(16.dp))
 
                                     // Theme options (vertical cards: follow system / light / dark)
                                     androidx.compose.material3.Card(
@@ -542,27 +552,27 @@ class MainActivity : ComponentActivity() {
                                             DrawerItem("歌曲", Icons.Rounded.MusicNote, Color(0xFF4CAF50),
                                                 navBackStackEntry?.destination?.route == Screens.Songs.route) {
                                                 navController.navigate(Screens.Songs.route) { popUpTo(0) }
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("专辑", Icons.Rounded.Album, Color(0xFFE53935),
                                                 navBackStackEntry?.destination?.route == Screens.Albums.route) {
                                                 navController.navigate(Screens.Albums.route) { popUpTo(0) }
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("艺术家", Icons.Rounded.Person, Color(0xFFFFB300),
                                                 navBackStackEntry?.destination?.route == Screens.Artists.route) {
                                                 navController.navigate(Screens.Artists.route) { popUpTo(0) }
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("文件夹", Icons.Rounded.Folder, Color(0xFF7E57C2),
                                                 navBackStackEntry?.destination?.route == Screens.Folders.route) {
                                                 navController.navigate(Screens.Folders.route) { popUpTo(0) }
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("歌单", Icons.Rounded.QueueMusic, Color(0xFF1E88E5),
                                                 navBackStackEntry?.destination?.route == Screens.Playlists.route) {
                                                 navController.navigate(Screens.Playlists.route) { popUpTo(0) }
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                         }
                                     }
@@ -578,7 +588,7 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         Column {
                                             DrawerItem("扫描音乐", Icons.Rounded.Refresh, Color(0xFF7E57C2), false) {
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                                 coroutineScope.launch(lmScannerCoroutine) {
                                                     scanInit(
                                                         this@MainActivity, database, downloadUtil, coroutineScope, playerConnection,
@@ -589,48 +599,27 @@ class MainActivity : ComponentActivity() {
                                             DrawerItem("统计", Icons.Rounded.Info, Color(0xFFE53935),
                                                 navBackStackEntry?.destination?.route == "stats") {
                                                 navController.navigate("stats")
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("设置", Icons.Rounded.Settings, Color(0xFF4CAF50),
                                                 navBackStackEntry?.destination?.route == "settings") {
                                                 navController.navigate("settings")
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("关于", Icons.Rounded.Info, Color(0xFF1E88E5), false) {
                                                 navController.navigate("settings/about")
-                                                drawerOpen = false
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                         }
                                     }
                                 }
-
-                            // Top layer: main content that slides + scales with drawer (Salt Player style)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .offset(x = (drawerProgress * 280).dp)
-                                    .scale(1f - drawerProgress * 0.08f)
-                                    .clip(RoundedCornerShape((drawerProgress * 24).dp))
-                            ) {
+                            }
+                        ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                         ) {
                             Log.v(MAIN_TAG, "RC-3")
-
-                            // Scrim overlay: tap to close drawer
-                            if (drawerProgress > 0.01f) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = drawerProgress * 0.3f))
-                                        .clickable(
-                                            indication = null,
-                                            interactionSource = remember { MutableInteractionSource() }
-                                        ) { drawerOpen = false }
-                                )
-                            }
 
 
                             val navHost: @Composable() (() -> Unit) = @Composable {
@@ -1122,7 +1111,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                         }
-                }
                 }
             }
         }
