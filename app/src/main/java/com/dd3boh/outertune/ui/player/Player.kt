@@ -586,7 +586,7 @@ fun PlayerTopBar() {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = mediaMetadata?.title ?: "",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineMedium,
                 color = onPlayerBackgroundColor(),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -595,7 +595,7 @@ fun PlayerTopBar() {
             )
             Text(
                 text = mediaMetadata?.artists?.joinToString { it.name } ?: "",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = onPlayerBackgroundColor().copy(alpha = 0.6f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
