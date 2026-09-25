@@ -99,6 +99,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -210,9 +211,12 @@ fun BottomSheetPlayer(
     }
 
 
-    BottomSheet(
+    SharedCoverHost(
         state = state,
         modifier = modifier,
+    ) {
+    BottomSheet(
+        state = state,
         background = {
             PlayerBackground(
                 playerConnection = playerConnection,
@@ -246,6 +250,7 @@ fun BottomSheetPlayer(
             PortraitPlayer(state, navController, queueBoard)
         }
     }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -277,8 +282,15 @@ fun PortraitPlayer(
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
             .padding(bottom = queueSheetState.collapsedBound)
     ) {
-        // Top row: title + artist on left, cast icon on right
-        PlayerTopBar()
+        // Top row: title + artist on left, cast icon on right.
+        // Staggers in mid-transition, sliding up from below.
+        val titleProgress = ((playerSheetState.progress - 0.30f) / 0.35f).coerceIn(0f, 1f)
+        PlayerTopBar(
+            modifier = Modifier.graphicsLayer {
+                alpha = titleProgress
+                translationY = (1f - titleProgress) * 40.dp.toPx()
+            }
+        )
 
         BoxWithConstraints(
             contentAlignment = Alignment.Center,
@@ -383,7 +395,16 @@ fun PortraitPlayer(
             }
         }
 
-        ControlsContent(playerSheetState, queueSheetState, navController, queueBoard)
+        // Controls stagger in last, sliding up from below as the cover settles.
+        val controlsProgress = ((playerSheetState.progress - 0.55f) / 0.35f).coerceIn(0f, 1f)
+        Box(
+            modifier = Modifier.graphicsLayer {
+                alpha = controlsProgress
+                translationY = (1f - controlsProgress) * 60.dp.toPx()
+            }
+        ) {
+            ControlsContent(playerSheetState, queueSheetState, navController, queueBoard)
+        }
 
 
         Spacer(Modifier.height(24.dp))
@@ -575,12 +596,12 @@ fun LandscapePlayer(
 
 
 @Composable
-fun PlayerTopBar() {
+fun PlayerTopBar(modifier: Modifier = Modifier) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = PlayerHorizontalPadding, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically

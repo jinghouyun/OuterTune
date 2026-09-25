@@ -50,8 +50,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -198,6 +201,11 @@ fun MiniMediaInfo(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
     ) {
+        val sharedCover = LocalSharedCoverState.current
+        // During the shared-element transition, hide the mini cover so the
+        // overlay cover is the only one drawn (avoids ghosting / double image).
+        val coverAlpha = if (sharedCover != null && sharedCover.progress in 0.02f..0.98f) 0f else 1f
+
         BoxWithConstraints(
             modifier = Modifier
                 .padding(6.dp)
@@ -208,7 +216,11 @@ fun MiniMediaInfo(
                 contentDescription = null,
                 modifier = Modifier
                     .aspectRatio(1f)
+                    .alpha(coverAlpha)
                     .clip(RoundedCornerShape(ThumbnailCornerRadius))
+                    .onGloballyPositioned { coords ->
+                        sharedCover?.miniRect = coords.boundsInWindow()
+                    }
             )
 
             androidx.compose.animation.AnimatedVisibility(

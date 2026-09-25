@@ -40,10 +40,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalHapticFeedback
 import coil3.compose.AsyncImage
 import com.dd3boh.outertune.LocalPlayerConnection
@@ -122,11 +125,16 @@ fun Thumbnail(
                         label = "coverCrossfade"
                     ) { songId ->
                         val currentMetadata = mediaMetadata
+                        val sharedCover = LocalSharedCoverState.current
+                        // Hide the full-screen cover while the overlay shared cover is flying.
+                        val coverAlpha = if (sharedCover != null && sharedCover.progress in 0.02f..0.98f) 0f else 1f
+
                         AsyncImage(
                             model = currentMetadata?.getThumbnailModel(),
                             contentDescription = null,
                             modifier = Modifier
                                 .aspectRatio(1f)
+                                .alpha(coverAlpha)
                                 .scale(coverScale)
                                 .shadow(
                                     elevation = if (isPlaying) 32.dp else 16.dp,
@@ -134,6 +142,9 @@ fun Thumbnail(
                                     clip = false
                                 )
                                 .clip(RoundedCornerShape(24.dp))
+                                .onGloballyPositioned { coords ->
+                                    sharedCover?.fullRect = coords.boundsInWindow()
+                                }
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
