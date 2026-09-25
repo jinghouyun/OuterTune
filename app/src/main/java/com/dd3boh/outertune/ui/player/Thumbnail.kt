@@ -86,7 +86,7 @@ fun Thumbnail(
                         contentDescription = null,
                         modifier = Modifier
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(ThumbnailCornerRadius * 2))
+                            .clip(RoundedCornerShape(24.dp))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
