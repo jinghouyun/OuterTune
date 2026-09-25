@@ -30,6 +30,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -616,6 +617,19 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxSize()
                         ) {
                             Log.v(MAIN_TAG, "RC-3")
+
+                            // Scrim overlay: tap to close drawer
+                            if (drawerProgress > 0.01f) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = drawerProgress * 0.3f))
+                                        .clickable(
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() }
+                                        ) { drawerOpen = false }
+                                )
+                            }
 
 
                             val navHost: @Composable() (() -> Unit) = @Composable {
