@@ -582,56 +582,28 @@ class MainActivity : ComponentActivity() {
                                         .find { it.route == defaultOpenTab })?.route
                                         ?: Screens.Songs.route,
                                     enterTransition = {
-                                        val currentRouteIndex = navigationItems.indexOfFirst {
-                                            it.route == targetState.destination.route
-                                        }
-                                        val previousRouteIndex = navigationItems.indexOfFirst {
-                                            it.route == initialState.destination.route
-                                        }
-
-                                        if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex)
-                                            slideInHorizontally { it / 8 } + fadeIn(tween(200))
-                                        else
-                                            slideInHorizontally { -it / 8 } + fadeIn(tween(200))
+                                        fadeIn(tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
+                                            slideInHorizontally(
+                                                animationSpec = tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                            ) { it / 12 }
                                     },
                                     exitTransition = {
-                                        val currentRouteIndex = navigationItems.indexOfFirst {
-                                            it.route == initialState.destination.route
-                                        }
-                                        val targetRouteIndex = navigationItems.indexOfFirst {
-                                            it.route == targetState.destination.route
-                                        }
-
-                                        if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex)
-                                            slideOutHorizontally { -it / 8 } + fadeOut(tween(100))
-                                        else
-                                            slideOutHorizontally { it / 8 } + fadeOut(tween(100))
+                                        fadeOut(tween(180, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) +
+                                            slideOutHorizontally(
+                                                animationSpec = tween(180, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
+                                            ) { -it / 12 }
                                     },
                                     popEnterTransition = {
-                                        val currentRouteIndex = navigationItems.indexOfFirst {
-                                            it.route == targetState.destination.route
-                                        }
-                                        val previousRouteIndex = navigationItems.indexOfFirst {
-                                            it.route == initialState.destination.route
-                                        }
-
-                                        if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex)
-                                            slideInHorizontally { it / 8 } + fadeIn(tween(200))
-                                        else
-                                            slideInHorizontally { -it / 8 } + fadeIn(tween(200))
+                                        fadeIn(tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
+                                            slideInHorizontally(
+                                                animationSpec = tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                            ) { -it / 12 }
                                     },
                                     popExitTransition = {
-                                        val currentRouteIndex = navigationItems.indexOfFirst {
-                                            it.route == initialState.destination.route
-                                        }
-                                        val targetRouteIndex = navigationItems.indexOfFirst {
-                                            it.route == targetState.destination.route
-                                        }
-
-                                        if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex)
-                                            slideOutHorizontally { -it / 8 } + fadeOut(tween(100))
-                                        else
-                                            slideOutHorizontally { it / 8 } + fadeOut(tween(100))
+                                        fadeOut(tween(180, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) +
+                                            slideOutHorizontally(
+                                                animationSpec = tween(180, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
+                                            ) { it / 12 }
                                     },
                                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                                 )
