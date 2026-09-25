@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,13 +24,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.NavigateNext
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -165,12 +170,19 @@ fun LocalSearchScreen(
 
                 else -> {
                     val downloadingSet by remoteViewModel.downloadingIds.collectAsState()
+                    val hotSearch by remoteViewModel.hotSearch.collectAsState()
+                    val searchHistory by remoteViewModel.searchHistory.collectAsState()
                     RemoteResults(
                     uiState = remoteUiState,
                     query = query,
                     isPlaying = isPlaying,
                     mediaMetadata = mediaMetadata,
                     downloadingSet = downloadingSet,
+                    hotSearch = hotSearch,
+                    searchHistory = searchHistory,
+                    onHotSearchClick = { remoteViewModel.query.value = it },
+                    onRemoveHistory = { remoteViewModel.removeHistory(it) },
+                    onClearHistory = { remoteViewModel.clearHistory() },
                     onPlay = { song ->
                         val all = remoteUiState.songs
                         scope.launch(Dispatchers.IO) {
@@ -348,6 +360,11 @@ private fun RemoteResults(
     isPlaying: Boolean,
     mediaMetadata: MediaMetadata?,
     downloadingSet: Set<String>,
+    hotSearch: List<String>,
+    searchHistory: List<String>,
+    onHotSearchClick: (String) -> Unit,
+    onRemoveHistory: (String) -> Unit,
+    onClearHistory: () -> Unit,
     onPlay: (RemoteSong) -> Unit,
     onDownload: (RemoteSong) -> Unit,
 ) {
@@ -356,9 +373,58 @@ private fun RemoteResults(
             uiState.loading -> CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center)
             )
+            query.isBlank() -> LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (searchHistory.isNotEmpty()) {
+                    item {
+                        Text("搜索历史", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    items(searchHistory) { h ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                            androidx.compose.material3.AssistChip(
+                                onClick = { onHotSearchClick(h) },
+                                label = { Text(h) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { onRemoveHistory(h) }) {
+                                Icon(Icons.Rounded.Close, null, Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                    item {
+                        TextButton(onClick = onClearHistory) { Text("清空历史") }
+                        Spacer(Modifier.height(16.dp))
+                    }
+                }
+                if (hotSearch.isNotEmpty()) {
+                    item {
+                        Text("热门搜索", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    items(hotSearch) { w ->
+                        androidx.compose.material3.AssistChip(
+                            onClick = { onHotSearchClick(w) },
+                            label = { Text(w) },
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                }
+                if (searchHistory.isEmpty() && hotSearch.isEmpty()) {
+                    item {
+                        EmptyPlaceholder(
+                            icon = Icons.Rounded.Cloud,
+                            text = "输入关键词搜索在线音乐",
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                }
+            }
             uiState.songs.isEmpty() -> EmptyPlaceholder(
                 icon = Icons.Rounded.Cloud,
-                text = if (query.isBlank()) "输入关键词搜索在线音乐" else "未找到结果",
+                text = "未找到结果",
                 modifier = Modifier.align(Alignment.Center)
             )
             else -> LazyColumn(

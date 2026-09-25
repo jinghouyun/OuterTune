@@ -130,6 +130,11 @@ class RemoteMusicRepository @Inject constructor(
             null
         }
 
+    /** NetEase hot search words. */
+    suspend fun getHotSearch(): List<String> = withContext(Dispatchers.IO) {
+        runCatching { WySource.getHotSearch() }.getOrDefault(emptyList())
+    }
+
     suspend fun getLyric(mediaId: String): RemoteLyric? = withContext(Dispatchers.IO) {
         val parsed = parseMediaId(mediaId) ?: return@withContext null
         val (sourceId, sourceSongId) = parsed

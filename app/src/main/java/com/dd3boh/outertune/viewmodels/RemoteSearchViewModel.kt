@@ -64,8 +64,14 @@ class RemoteSearchViewModel @Inject constructor(
     /** Search history list (most recent first). */
     val searchHistory = MutableStateFlow<List<String>>(emptyList())
 
+    /** Hot search words from NetEase. */
+    val hotSearch = MutableStateFlow<List<String>>(emptyList())
+
     init {
         refreshHistory()
+        viewModelScope.launch {
+            hotSearch.value = repository.getHotSearch()
+        }
         combine(query, sourceTab) { q, tab -> q to tab }
             .debounce(350L)
             .onEach { (q, tab) ->

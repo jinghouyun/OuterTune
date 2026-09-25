@@ -112,4 +112,22 @@ object WySource : RemoteMusicSource {
             )
         }.getOrNull()
     }
+
+    /** NetEase hot search words (top 10). */
+    fun getHotSearch(): List<String> {
+        return runCatching {
+            val payload = JSONObject()
+                .put("id", "HOT_SEARCH_SONG#@#")
+            val form = WyCrypto.eapi("/api/search/chart/detail", payload)
+            val headers = mapOf("User-Agent" to UA)
+            val resp = RemoteHttp.postForm(
+                "https://interface3.music.163.com/eapi/search/chart/detail", form, headers
+            )
+            val json = JSONObject(resp)
+            val items = json.optJSONObject("data")?.optJSONArray("itemList") ?: return emptyList()
+            (0 until items.length()).mapNotNull { i ->
+                items.getJSONObject(i).optString("searchWord").takeIf { it.isNotEmpty() }
+            }.take(10)
+        }.getOrDefault(emptyList())
+    }
 }
