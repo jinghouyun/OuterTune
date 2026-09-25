@@ -23,6 +23,8 @@ import androidx.compose.material.icons.rounded.FilterAlt
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -78,6 +80,7 @@ import com.dd3boh.outertune.ui.component.ScrollToTopManager
 import com.dd3boh.outertune.ui.component.SelectHeader
 import com.dd3boh.outertune.ui.component.SortHeader
 import com.dd3boh.outertune.ui.component.items.SongListItem
+import com.dd3boh.outertune.ui.component.button.IconButton
 import com.dd3boh.outertune.ui.menu.ActionDropdown
 import com.dd3boh.outertune.ui.menu.DropdownItem
 import com.dd3boh.outertune.ui.utils.MEDIA_PERMISSION_LEVEL
@@ -137,107 +140,53 @@ fun LibrarySongsScreen(
     }
 
     val filterContent = @Composable {
-        ChipsRow(
-            chips = listOf(
-                SongFilter.LIKED to stringResource(R.string.filter_liked),
-                SongFilter.LIBRARY to stringResource(R.string.filter_library),
-                SongFilter.DOWNLOADED to stringResource(R.string.filter_downloaded)
-            ),
-            currentValue = filter,
-            onValueUpdate = {
-                filter = it
-            },
-        )
+        // Salt Player doesn't show filter chips on the songs page
     }
 
     val headerContent = @Composable {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            SortHeader(
-                sortType = sortType,
-                sortDescending = sortDescending,
-                onSortTypeChange = onSortTypeChange,
-                onSortDescendingChange = onSortDescendingChange,
-                sortTypeText = { sortType ->
-                    when (sortType) {
-                        SongSortType.CREATE_DATE -> if (filter == SongFilter.LIKED) R.string.sort_by_like_date else R.string.sort_by_create_date
-                        SongSortType.MODIFIED_DATE -> R.string.sort_by_date_modified
-                        SongSortType.RELEASE_DATE -> R.string.sort_by_date_released
-                        SongSortType.NAME -> R.string.sort_by_name
-                        SongSortType.ARTIST -> R.string.sort_by_artist
-                        SongSortType.PLAY_COUNT -> R.string.sort_by_play_count
+            // Left: shuffle icon + song count
+            IconButton(
+                onClick = {
+                    songs?.let { songList ->
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = context.getString(R.string.queue_all_songs),
+                                items = songList.map { it.toMediaMetadata() },
+                                startShuffled = true,
+                            )
+                        )
                     }
                 }
-            )
+            ) {
+                Icon(Icons.Rounded.Shuffle, contentDescription = null)
+            }
+            Spacer(Modifier.width(12.dp))
+            songs?.let { songList ->
+                Text(
+                    text = "${songList.size}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
 
             Spacer(Modifier.weight(1f))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            // Right: sort + view toggle
+            IconButton(
+                onClick = { onSortDescendingChange(!sortDescending) }
             ) {
-                songs?.let { songs ->
-                    Text(
-                        text = pluralStringResource(R.plurals.n_song, songs.size, songs.size),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    ActionDropdown(
-                        actions = listOf(
-                            DropdownItem(
-                                title = stringResource(R.string.library_filter),
-                                leadingIcon = { Icon(Icons.Rounded.FilterAlt, null) },
-                                action = {},
-                                secondaryDropdown =
-                                    listOf(
-                                        DropdownItem(
-                                            title = stringResource(R.string.filter_liked),
-                                            leadingIcon = null,
-                                            action = { filter = SongFilter.LIKED }
-                                        ),
-                                        DropdownItem(
-                                            title = stringResource(R.string.filter_library),
-                                            leadingIcon = null,
-                                            action = { filter = SongFilter.LIBRARY }
-                                        ),
-                                        DropdownItem(
-                                            title = stringResource(R.string.filter_downloaded),
-                                            leadingIcon = null,
-                                            action = { filter = SongFilter.DOWNLOADED }
-                                        ),
-                                    )
-                            ),
-                            DropdownItem(
-                                title = stringResource(R.string.queue_all_songs),
-                                leadingIcon = { Icon(Icons.Rounded.PlayArrow, null) },
-                                action = {
-                                    playerConnection.playQueue(
-                                        ListQueue(
-                                            title = context.getString(R.string.queue_all_songs),
-                                            items = songs.map { it.toMediaMetadata() },
-                                            startShuffled = false,
-                                        )
-                                    )
-                                }
-                            ),
-                            DropdownItem(
-                                title = stringResource(R.string.shuffle),
-                                leadingIcon = { Icon(Icons.Rounded.Shuffle, null) },
-                                action = {
-                                    playerConnection.playQueue(
-                                        ListQueue(
-                                            title = context.getString(R.string.queue_all_songs),
-                                            items = songs.map { it.toMediaMetadata() },
-                                            startShuffled = true,
-                                        )
-                                    )
-                                }
-                            ),
-                        ),
-                    )
-                }
+                Icon(Icons.Rounded.Sort, contentDescription = null)
+            }
+            IconButton(
+                onClick = { /* view toggle - list/grid */ }
+            ) {
+                Icon(Icons.Rounded.ViewList, contentDescription = null)
             }
         }
     }

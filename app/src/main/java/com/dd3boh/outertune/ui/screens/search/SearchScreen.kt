@@ -4,20 +4,22 @@ import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -31,15 +33,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.dd3boh.outertune.LocalDrawerOpen
 import com.dd3boh.outertune.LocalPlayerAwareWindowInsets
 import com.dd3boh.outertune.R
 import com.dd3boh.outertune.constants.DEFAULT_ENABLED_TABS
@@ -62,15 +66,16 @@ fun SearchBarContainer(
     val focusManager = LocalFocusManager.current
 
     val enabledTabs by rememberPreference(EnabledTabsKey, defaultValue = DEFAULT_ENABLED_TABS)
-
     val navigationItems = remember { Screens.getScreens(enabledTabs) }
     val searchBarFocusRequester = remember { FocusRequester() }
+    val drawerOpen = LocalDrawerOpen.current
 
     val (query, onQueryChange) = rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
     }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     var searchActive by rememberSaveable {
         mutableStateOf(false)
@@ -79,7 +84,7 @@ fun SearchBarContainer(
         searchActive = newActive
         if (!newActive) {
             focusManager.clearFocus()
-            if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route }) {
+            if (navigationItems.fastAny { it.route == currentRoute }) {
                 onQueryChange(TextFieldValue())
             }
         }
@@ -91,10 +96,19 @@ fun SearchBarContainer(
         }
     }
 
+    // Determine if we're on a main tab page
+    val isMainTab = navigationItems.fastAny { it.route == currentRoute }
 
-    val shouldShowSearchBar = remember(searchActive, navBackStackEntry) {
-        (searchActive || navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
-                navBackStackEntry?.destination?.route?.startsWith("search/") == true)
+    // Title mapping for main tabs
+    val titleText = when (currentRoute) {
+        Screens.Songs.route -> stringResource(R.string.songs)
+        Screens.Albums.route -> stringResource(R.string.albums)
+        Screens.Artists.route -> stringResource(R.string.artists)
+        Screens.Folders.route -> stringResource(R.string.folders)
+        Screens.Playlists.route -> stringResource(R.string.playlists)
+        Screens.History.route -> stringResource(R.string.history)
+        "settings" -> stringResource(R.string.settings)
+        else -> null
     }
 
     LaunchedEffect(navBackStackEntry) {
@@ -103,8 +117,35 @@ fun SearchBarContainer(
         }
     }
 
+    // Show Salt-style top bar on main tabs (when not searching)
+    if (isMainTab && !searchActive && currentRoute?.startsWith("search") != true) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = drawerOpen) {
+                Icon(Icons.Rounded.Menu, contentDescription = null)
+            }
+            Text(
+                text = titleText ?: "",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp)
+            )
+            IconButton(onClick = { onSearchActiveChange(true) }) {
+                Icon(Icons.Rounded.Search, contentDescription = null)
+            }
+        }
+    }
+
+    // Full search bar (expanded state) - only show when active or on search/detail pages
     AnimatedVisibility(
-        visible = shouldShowSearchBar,
+        visible = searchActive || (!isMainTab && currentRoute?.startsWith("search") != true && titleText == null),
         enter = fadeIn(),
         exit = fadeOut()
     ) {
@@ -123,61 +164,27 @@ fun SearchBarContainer(
                     onClick = {
                         when {
                             searchActive -> onSearchActiveChange(false)
-
-                            !searchActive && navBackStackEntry?.destination?.route?.startsWith(
-                                "search"
-                            ) == true -> {
-                                navController.navigateUp()
-                            }
-
-                            else -> onSearchActiveChange(true)
+                            currentRoute?.startsWith("search") == true -> navController.navigateUp()
+                            else -> navController.navigateUp()
                         }
                     },
                 ) {
                     Icon(
-                        imageVector =
-                            if (searchActive || navBackStackEntry?.destination?.route?.startsWith("search") == true) {
-                                Icons.AutoMirrored.Rounded.ArrowBack
-                            } else {
-                                Icons.Rounded.Search
-                            },
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = null
                     )
                 }
             },
             trailingIcon = {
-                if (searchActive) {
-                    if (query.text.isNotEmpty()) {
-                        IconButton(
-                            onClick = { onQueryChange(TextFieldValue("")) }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = null
-                            )
-                        }
-                    }
-                } else {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable {
-                                navController.navigate("settings")
-                            }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Settings,
-                            contentDescription = null
-                        )
+                if (searchActive && query.text.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange(TextFieldValue("")) }) {
+                        Icon(Icons.Rounded.Close, contentDescription = null)
                     }
                 }
             },
             windowInsets = windowInsets,
             focusRequester = searchBarFocusRequester,
         ) {
-            Log.v("SearchBarContainer", "SB-2")
             LocalSearchScreen(
                 query = query.text,
                 navController = navController,

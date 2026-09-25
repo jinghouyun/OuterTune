@@ -58,12 +58,15 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalDrawerSheet
@@ -251,7 +254,7 @@ class MainActivity : ComponentActivity() {
             val snackbarHostState = remember { SnackbarHostState() }
 
             val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
-            val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+            val (darkTheme, onDarkThemeChange) = rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
             val highContrastCompat by rememberPreference(HighContrastKey, defaultValue = false)
             val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
             val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -421,6 +424,7 @@ class MainActivity : ComponentActivity() {
                         LocalDownloadUtil provides downloadUtil,
                         LocalShimmerTheme provides ShimmerTheme,
                         LocalSnackbarHostState provides snackbarHostState,
+                        LocalDrawerOpen provides { scope.launch { drawerState.open() } },
                     ) {
                         val drawerState = rememberDrawerState(DrawerValue.Closed)
                         val scope = rememberCoroutineScope()
@@ -439,6 +443,55 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                                     )
                                     Spacer(Modifier.height(16.dp))
+
+                                    // Theme toggle row
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        androidx.compose.material3.Card(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(end = 6.dp),
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                            colors = androidx.compose.material3.CardDefaults.cardColors(
+                                                containerColor = if (!useDarkTheme) MaterialTheme.colorScheme.primaryContainer
+                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                            ),
+                                            onClick = { onDarkThemeChange(DarkMode.OFF) }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(16.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(Icons.Rounded.LightMode, null, modifier = Modifier.size(20.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Text("浅色")
+                                            }
+                                        }
+                                        androidx.compose.material3.Card(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(start = 6.dp),
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                            colors = androidx.compose.material3.CardDefaults.cardColors(
+                                                containerColor = if (useDarkTheme) MaterialTheme.colorScheme.primaryContainer
+                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                            ),
+                                            onClick = { onDarkThemeChange(DarkMode.ON) }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(16.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(Icons.Rounded.DarkMode, null, modifier = Modifier.size(20.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Text("深色")
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(8.dp))
 
                                     androidx.compose.material3.Card(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
@@ -486,6 +539,20 @@ class MainActivity : ComponentActivity() {
                                         )
                                     ) {
                                         Column {
+                                            DrawerItem("扫描音乐", Icons.Rounded.Refresh, Color(0xFF7E57C2), false) {
+                                                scope.launch { drawerState.close() }
+                                                coroutineScope.launch(lmScannerCoroutine) {
+                                                    scanInit(
+                                                        this@MainActivity, database, downloadUtil, coroutineScope, playerConnection,
+                                                        snackbarHostState
+                                                    )
+                                                }
+                                            }
+                                            DrawerItem("统计", Icons.Rounded.Info, Color(0xFFE53935),
+                                                navBackStackEntry?.destination?.route == "stats") {
+                                                navController.navigate("stats")
+                                                scope.launch { drawerState.close() }
+                                            }
                                             DrawerItem("设置", Icons.Rounded.Settings, Color(0xFF4CAF50),
                                                 navBackStackEntry?.destination?.route == "settings") {
                                                 navController.navigate("settings")
@@ -1027,6 +1094,7 @@ val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error(
 val LocalPlayerAwareWindowInsets = compositionLocalOf<WindowInsets> { error("No player WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSnackbarHostState = staticCompositionLocalOf<SnackbarHostState> { error("No SnackbarHostState provided") }
+val LocalDrawerOpen = staticCompositionLocalOf<() -> Unit> { error("No drawer open action provided") }
 
 @Composable
 private fun DrawerItem(
