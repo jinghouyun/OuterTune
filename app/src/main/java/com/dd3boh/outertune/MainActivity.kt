@@ -278,7 +278,7 @@ class MainActivity : ComponentActivity() {
             }
             val (defaultOpenTab, onDefaultOpenTabChange) = rememberPreference(
                 DefaultOpenTabKey,
-                defaultValue = Screens.Home.route
+                defaultValue = Screens.Songs.route
             )
 
 
@@ -433,7 +433,7 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     Spacer(Modifier.height(40.dp))
                                     Text(
-                                        text = "Apple Music",
+                                        text = "椒盐音乐",
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
@@ -512,7 +512,7 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     startDestination = (Screens.getAllScreens()
                                         .find { it.route == defaultOpenTab })?.route
-                                        ?: Screens.Home.route,
+                                        ?: Screens.Songs.route,
                                     enterTransition = {
                                         val currentRouteIndex = navigationItems.indexOfFirst {
                                             it.route == targetState.destination.route
@@ -925,7 +925,7 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     if (!useNavRail) {
-                                        navbar()
+                                        // navbar() - replaced by navigation drawer
                                     } else {
                                         navRail(if (LocalLayoutDirection.current == LayoutDirection.Rtl) Alignment.BottomEnd else Alignment.BottomStart)
                                     }
