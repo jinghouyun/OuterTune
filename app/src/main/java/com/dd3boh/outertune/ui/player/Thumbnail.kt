@@ -10,9 +10,17 @@
 package com.dd3boh.outertune.ui.player
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -33,13 +41,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import coil3.compose.AsyncImage
 import com.dd3boh.outertune.LocalPlayerConnection
 import com.dd3boh.outertune.constants.PlayerHorizontalPadding
 import com.dd3boh.outertune.constants.ShowLyricsKey
-import com.dd3boh.outertune.constants.ThumbnailCornerRadius
 import com.dd3boh.outertune.models.MediaMetadata
 import com.dd3boh.outertune.ui.component.Lyrics
 import com.dd3boh.outertune.utils.rememberPreference
@@ -59,7 +68,18 @@ fun Thumbnail(
 
     val playerMediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val error by playerConnection.error.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsState()
     val mediaMetadata = customMediaMetadata ?: playerMediaMetadata
+
+    // Subtle scale animation: slightly smaller when paused
+    val coverScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0.95f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "coverScale"
+    )
 
     Box(modifier = modifier) {
         AnimatedVisibility(
@@ -82,21 +102,37 @@ fun Thumbnail(
                     modifier = Modifier
                         .weight(1f, false)
                 ) {
-                    AsyncImage(
-                        model = mediaMetadata?.getThumbnailModel(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(24.dp))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                enabled = showLyricsOnClick,
-                            ) {
-                                showLyrics = !showLyrics
-                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                            }
-                    )
+                    AnimatedContent(
+                        targetState = mediaMetadata?.id,
+                        transitionSpec = {
+                            (fadeIn(tween(500)) + scaleIn(initialScale = 0.92f, animationSpec = tween(500)))
+                                .togetherWith(fadeOut(tween(300)))
+                        },
+                        label = "coverCrossfade"
+                    ) { songId ->
+                        val currentMetadata = mediaMetadata
+                        AsyncImage(
+                            model = currentMetadata?.getThumbnailModel(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .aspectRatio(1f)
+                                .scale(coverScale)
+                                .shadow(
+                                    elevation = if (isPlaying) 32.dp else 16.dp,
+                                    shape = RoundedCornerShape(24.dp),
+                                    clip = false
+                                )
+                                .clip(RoundedCornerShape(24.dp))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    enabled = showLyricsOnClick,
+                                ) {
+                                    showLyrics = !showLyrics
+                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                }
+                        )
+                    }
                 }
             }
         }

@@ -55,7 +55,7 @@ const val MAX_PLAYER_CONSECUTIVE_ERR = 3
  * Misc weird constants
  */
 
-val DEFAULT_PLAYER_BACKGROUND = PlayerBackgroundStyle.FOLLOW_THEME
+val DEFAULT_PLAYER_BACKGROUND = PlayerBackgroundStyle.GRADIENT
 
 val scannerWhitelistExts = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
     listOf("dsf", "dff", "xm", "mod", "tta", "ape", "wv")
