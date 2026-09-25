@@ -139,7 +139,14 @@ class RemoteMusicRepository @Inject constructor(
             title = "", artists = emptyList(), albumName = null,
             durationSec = 0, thumbnailUrl = null,
         )
-        runCatching { source.getLyric(song) }.getOrNull()
+        val lyric = runCatching { source.getLyric(song) }.getOrNull() ?: return@withContext null
+        // Apply simplified-to-traditional conversion if enabled
+        if (context.dataStore[com.dd3boh.outertune.constants.S2TConvertKey] == true) {
+            lyric.copy(
+                lyric = lyric.lyric?.let { com.dd3boh.outertune.utils.S2TConverter.convert(it) },
+                translated = lyric.translated?.let { com.dd3boh.outertune.utils.S2TConverter.convert(it) }
+            )
+        } else lyric
     }
 
     /**

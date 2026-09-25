@@ -69,8 +69,11 @@ import com.dd3boh.outertune.constants.AudioDecoderKey
 import com.dd3boh.outertune.constants.AudioGaplessOffloadKey
 import com.dd3boh.outertune.constants.AudioNormalizationKey
 import com.dd3boh.outertune.constants.AudioOffloadKey
+import com.dd3boh.outertune.constants.AutoPlayOnLaunchKey
 import com.dd3boh.outertune.constants.ENABLE_FFMETADATAEX
 import com.dd3boh.outertune.constants.KeepAliveKey
+import com.dd3boh.outertune.constants.LastPositionKey
+import com.dd3boh.outertune.constants.LastSongIdKey
 import com.dd3boh.outertune.constants.MAX_PLAYER_CONSECUTIVE_ERR
 import com.dd3boh.outertune.constants.MaxQueuesKey
 import com.dd3boh.outertune.constants.MediaSessionConstants.CommandToggleLike
@@ -259,6 +262,25 @@ class MusicService : MediaLibraryService(),
         val sessionToken = SessionToken(this, ComponentName(this, MusicService::class.java))
         val controllerFuture = MediaController.Builder(this, sessionToken).buildAsync()
         controllerFuture.addListener({ controllerFuture.get() }, MoreExecutors.directExecutor())
+
+        // Auto-resume last song if enabled
+        if (dataStore.get(AutoPlayOnLaunchKey, false)) {
+            val lastSongId = dataStore.get(LastSongIdKey, "")
+            val lastPos = dataStore.get(LastPositionKey, 0L)
+            if (lastSongId.isNotEmpty()) {
+                scope.launch(SilentHandler) {
+                    runCatching {
+                        val song = database.song(lastSongId).first() ?: return@runCatching
+                        val mediaItem = MediaItem.Builder().setMediaId(song.id).build()
+                            .buildUpon().setUri(song.id.toUri()).build()
+                        withContext(Dispatchers.Main) {
+                            player.setMediaItem(mediaItem, lastPos)
+                            player.prepare()
+                        }
+                    }
+                }
+            }
+        }
 
         connectivityManager = getSystemService()!!
 
@@ -811,6 +833,17 @@ class MusicService : MediaLibraryService(),
             val pos = player.currentPosition
             val q = queueBoard.value.getCurrentQueue()
             q?.lastSongPos = pos
+            // Persist last song id + position for resume on launch
+            player.currentMediaItem?.mediaId?.let { mid ->
+                scope.launch(SilentHandler) {
+                    runCatching {
+                        dataStore.edit { prefs ->
+                            prefs[LastSongIdKey] = mid
+                            prefs[LastPositionKey] = pos
+                        }
+                    }
+                }
+            }
         }
         super.onIsPlayingChanged(isPlaying)
     }

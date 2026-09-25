@@ -204,6 +204,10 @@ val DownloadLyricKey = booleanPreferencesKey("downloadLyric")
 val VocalSeparatorApiKey = stringPreferencesKey("vocalSeparatorApi")
 val VocalSeparatorApiUrlKey = stringPreferencesKey("vocalSeparatorApiUrl")
 
+/** Playback position persistence */
+val LastSongIdKey = stringPreferencesKey("lastSongId")
+val LastPositionKey = longPreferencesKey("lastPosition")
+
 //val SearchSourceKey = stringPreferencesKey("searchSource")
 
 //val VisitorDataKey = stringPreferencesKey("visitorData")

@@ -65,6 +65,7 @@ import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -844,6 +845,85 @@ fun ControlsContent(
                     } catch (_: Exception) {}
                 }
             )
+
+            // Vocal separation track toggle (only shown if current song has a separation record)
+            run {
+                val sepRecord = remember(mediaMetadata?.id) {
+                    mediaMetadata?.id?.let { com.dd3boh.outertune.remote.VocalSeparationStore(context).get(it) }
+                }
+                var showTrackDialog by remember { mutableStateOf(false) }
+                var currentTrack by remember { mutableStateOf("original") }
+                if (sepRecord != null && sepRecord.status == "done") {
+                    ResizableIconButton(
+                        icon = Icons.Rounded.Mic,
+                        modifier = Modifier.size(28.dp),
+                        color = if (currentTrack == "original") iconColor.copy(alpha = 0.6f) else iconColor,
+                        onClick = { showTrackDialog = true }
+                    )
+                    if (showTrackDialog) {
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { showTrackDialog = false },
+                            title = { Text("切换轨道") },
+                            text = {
+                                Column {
+                                    listOf("original" to "原声", "vocal" to "人声", "accompaniment" to "伴奏").forEach { (mode, label) ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    currentTrack = mode
+                                                    val pos = playerConnection.player.currentPosition
+                                                    when (mode) {
+                                                        "vocal" -> {
+                                                            sepRecord.vocalUrl.takeIf { it.startsWith("vocal://") }?.let {
+                                                                playerConnection.player.setMediaItem(
+                                                                    androidx.media3.common.MediaItem.fromUri(it), pos
+                                                                )
+                                                                playerConnection.player.prepare()
+                                                                playerConnection.player.play()
+                                                            }
+                                                        }
+                                                        "accompaniment" -> {
+                                                            sepRecord.accompanimentUrl.takeIf { it.startsWith("accompaniment://") }?.let {
+                                                                playerConnection.player.setMediaItem(
+                                                                    androidx.media3.common.MediaItem.fromUri(it), pos
+                                                                )
+                                                                playerConnection.player.prepare()
+                                                                playerConnection.player.play()
+                                                            }
+                                                        }
+                                                        else -> {
+                                                            // restore original
+                                                            mediaMetadata?.id?.let { mid ->
+                                                                playerConnection.player.setMediaItem(
+                                                                    androidx.media3.common.MediaItem.Builder().setMediaId(mid).setUri(mid).build(), pos
+                                                                )
+                                                                playerConnection.player.prepare()
+                                                                playerConnection.player.play()
+                                                            }
+                                                        }
+                                                    }
+                                                    showTrackDialog = false
+                                                }
+                                            , verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            androidx.compose.material3.RadioButton(
+                                                selected = currentTrack == mode,
+                                                onClick = null
+                                            )
+                                            Spacer(Modifier.width(12.dp))
+                                            Text(label)
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                androidx.compose.material3.TextButton(onClick = { showTrackDialog = false }) { Text("关闭") }
+                            }
+                        )
+                    }
+                }
+            }
 
             ResizableIconButton(
                 icon = Icons.AutoMirrored.Rounded.QueueMusic,
