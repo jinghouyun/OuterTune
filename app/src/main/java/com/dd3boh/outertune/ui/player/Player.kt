@@ -638,6 +638,7 @@ fun ControlsContent(
     val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val menuState = LocalMenuState.current
+    val context = LocalContext.current
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
     val isPlaying by playerConnection.isPlaying.collectAsState()
@@ -810,14 +811,34 @@ fun ControlsContent(
                 icon = Icons.Rounded.Schedule,
                 modifier = Modifier.size(28.dp),
                 color = iconColor.copy(alpha = 0.8f),
-                onClick = { /* sleep timer dialog */ }
+                onClick = {
+                    menuState.show {
+                        PlayerMenu(
+                            mediaMetadata = mediaMetadata,
+                            navController = navController,
+                            playerBottomSheetState = playerSheetState,
+                            onDismiss = { menuState.dismiss() }
+                        )
+                    }
+                }
             )
 
             ResizableIconButton(
                 icon = Icons.Rounded.GraphicEq,
                 modifier = Modifier.size(28.dp),
                 color = iconColor.copy(alpha = 0.8f),
-                onClick = { /* equalizer */ }
+                onClick = {
+                    val intent = android.media.audiofx.AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.let {
+                        android.content.Intent(it).apply {
+                            putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, playerConnection.player.audioSessionId)
+                            putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+                            putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
+                        }
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
+                }
             )
 
             ResizableIconButton(
