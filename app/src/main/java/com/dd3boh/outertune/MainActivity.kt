@@ -54,8 +54,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.SnackbarHost
@@ -79,6 +84,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -404,6 +410,93 @@ class MainActivity : ComponentActivity() {
                         LocalShimmerTheme provides ShimmerTheme,
                         LocalSnackbarHostState provides snackbarHostState,
                     ) {
+                        val drawerState = rememberDrawerState(DrawerValue.Closed)
+                        val scope = rememberCoroutineScope()
+
+                        ModalNavigationDrawer(
+                            drawerState = drawerState,
+                            drawerContent = {
+                                ModalDrawerSheet {
+                                    Spacer(Modifier.height(32.dp))
+                                    Text(
+                                        text = "Apple Music",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                                    )
+                                    NavigationDrawerItem(
+                                        label = { Text("首页") },
+                                        selected = navBackStackEntry?.destination?.route == Screens.Home.route,
+                                        icon = { Icon(Icons.Rounded.Home, null) },
+                                        onClick = {
+                                            navController.navigate(Screens.Home.route) { popUpTo(0) }
+                                            scope.launch { drawerState.close() }
+                                        },
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                    NavigationDrawerItem(
+                                        label = { Text("歌曲") },
+                                        selected = navBackStackEntry?.destination?.route == Screens.Songs.route,
+                                        icon = { Icon(Icons.Rounded.MusicNote, null, tint = Color(0xFF4CAF50)) },
+                                        onClick = {
+                                            navController.navigate(Screens.Songs.route) { popUpTo(0) }
+                                            scope.launch { drawerState.close() }
+                                        },
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                    NavigationDrawerItem(
+                                        label = { Text("专辑") },
+                                        selected = navBackStackEntry?.destination?.route == Screens.Albums.route,
+                                        icon = { Icon(Icons.Rounded.Album, null, tint = Color(0xFFE53935)) },
+                                        onClick = {
+                                            navController.navigate(Screens.Albums.route) { popUpTo(0) }
+                                            scope.launch { drawerState.close() }
+                                        },
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                    NavigationDrawerItem(
+                                        label = { Text("艺术家") },
+                                        selected = navBackStackEntry?.destination?.route == Screens.Artists.route,
+                                        icon = { Icon(Icons.Rounded.Person, null, tint = Color(0xFFFFB300)) },
+                                        onClick = {
+                                            navController.navigate(Screens.Artists.route) { popUpTo(0) }
+                                            scope.launch { drawerState.close() }
+                                        },
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                    NavigationDrawerItem(
+                                        label = { Text("文件夹") },
+                                        selected = navBackStackEntry?.destination?.route == Screens.Folders.route,
+                                        icon = { Icon(Icons.Rounded.Folder, null, tint = Color(0xFF7E57C2)) },
+                                        onClick = {
+                                            navController.navigate(Screens.Folders.route) { popUpTo(0) }
+                                            scope.launch { drawerState.close() }
+                                        },
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                    NavigationDrawerItem(
+                                        label = { Text("歌单") },
+                                        selected = navBackStackEntry?.destination?.route == Screens.Playlists.route,
+                                        icon = { Icon(Icons.Rounded.QueueMusic, null, tint = Color(0xFF1E88E5)) },
+                                        onClick = {
+                                            navController.navigate(Screens.Playlists.route) { popUpTo(0) }
+                                            scope.launch { drawerState.close() }
+                                        },
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                    NavigationDrawerItem(
+                                        label = { Text("设置") },
+                                        selected = navBackStackEntry?.destination?.route == "settings",
+                                        icon = { Icon(Icons.Rounded.Settings, null, tint = Color(0xFF4CAF50)) },
+                                        onClick = {
+                                            navController.navigate("settings")
+                                            scope.launch { drawerState.close() }
+                                        },
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                }
+                            }
+                        ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -899,6 +992,7 @@ class MainActivity : ComponentActivity() {
 
                         }
                     }
+                        }
                 }
             }
         }
