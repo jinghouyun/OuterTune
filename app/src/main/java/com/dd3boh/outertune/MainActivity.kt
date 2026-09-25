@@ -637,6 +637,7 @@ class MainActivity : ComponentActivity() {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.surface)
                                     .offset(x = (drawerProgress * 280).dp)
                                     .scale(1f - drawerProgress * 0.08f)
                                     .clip(RoundedCornerShape((drawerProgress * 24).dp))
