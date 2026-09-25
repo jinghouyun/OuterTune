@@ -76,7 +76,6 @@ import com.dd3boh.outertune.constants.ThumbnailCornerRadius
 import com.dd3boh.outertune.extensions.togglePlayPause
 import com.dd3boh.outertune.models.MediaMetadata
 import com.dd3boh.outertune.ui.component.button.IconButton
-import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -127,16 +126,10 @@ fun MiniPlayer(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxSize()
-                .hazeChild(
-                    state = hazeState,
-                    style = HazeStyle(
-                        backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
-                        blurRadius = 20.dp,
-                        tint = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f),
-                    )
-                )
+                .hazeChild(state = hazeState)
                 .shadow(elevation = 8.dp, shape = RoundedCornerShape(28.dp), clip = false)
                 .clip(RoundedCornerShape(28.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f))
                 .border(
                     width = 0.5.dp,
                     color = Color.White.copy(alpha = 0.12f),
