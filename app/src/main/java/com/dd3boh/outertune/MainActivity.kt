@@ -26,6 +26,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -58,6 +59,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.QueueMusic
@@ -92,6 +94,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -424,84 +427,75 @@ class MainActivity : ComponentActivity() {
                         ModalNavigationDrawer(
                             drawerState = drawerState,
                             drawerContent = {
-                                ModalDrawerSheet {
-                                    Spacer(Modifier.height(32.dp))
+                                ModalDrawerSheet(
+                                    drawerContainerColor = MaterialTheme.colorScheme.surface
+                                ) {
+                                    Spacer(Modifier.height(40.dp))
                                     Text(
                                         text = "Apple Music",
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                                     )
-                                    NavigationDrawerItem(
-                                        label = { Text("首页") },
-                                        selected = navBackStackEntry?.destination?.route == Screens.Home.route,
-                                        icon = { Icon(Icons.Rounded.Home, null) },
-                                        onClick = {
-                                            navController.navigate(Screens.Home.route) { popUpTo(0) }
-                                            scope.launch { drawerState.close() }
-                                        },
-                                        modifier = Modifier.padding(horizontal = 12.dp)
-                                    )
-                                    NavigationDrawerItem(
-                                        label = { Text("歌曲") },
-                                        selected = navBackStackEntry?.destination?.route == Screens.Songs.route,
-                                        icon = { Icon(Icons.Rounded.MusicNote, null, tint = Color(0xFF4CAF50)) },
-                                        onClick = {
-                                            navController.navigate(Screens.Songs.route) { popUpTo(0) }
-                                            scope.launch { drawerState.close() }
-                                        },
-                                        modifier = Modifier.padding(horizontal = 12.dp)
-                                    )
-                                    NavigationDrawerItem(
-                                        label = { Text("专辑") },
-                                        selected = navBackStackEntry?.destination?.route == Screens.Albums.route,
-                                        icon = { Icon(Icons.Rounded.Album, null, tint = Color(0xFFE53935)) },
-                                        onClick = {
-                                            navController.navigate(Screens.Albums.route) { popUpTo(0) }
-                                            scope.launch { drawerState.close() }
-                                        },
-                                        modifier = Modifier.padding(horizontal = 12.dp)
-                                    )
-                                    NavigationDrawerItem(
-                                        label = { Text("艺术家") },
-                                        selected = navBackStackEntry?.destination?.route == Screens.Artists.route,
-                                        icon = { Icon(Icons.Rounded.Person, null, tint = Color(0xFFFFB300)) },
-                                        onClick = {
-                                            navController.navigate(Screens.Artists.route) { popUpTo(0) }
-                                            scope.launch { drawerState.close() }
-                                        },
-                                        modifier = Modifier.padding(horizontal = 12.dp)
-                                    )
-                                    NavigationDrawerItem(
-                                        label = { Text("文件夹") },
-                                        selected = navBackStackEntry?.destination?.route == Screens.Folders.route,
-                                        icon = { Icon(Icons.Rounded.Folder, null, tint = Color(0xFF7E57C2)) },
-                                        onClick = {
-                                            navController.navigate(Screens.Folders.route) { popUpTo(0) }
-                                            scope.launch { drawerState.close() }
-                                        },
-                                        modifier = Modifier.padding(horizontal = 12.dp)
-                                    )
-                                    NavigationDrawerItem(
-                                        label = { Text("歌单") },
-                                        selected = navBackStackEntry?.destination?.route == Screens.Playlists.route,
-                                        icon = { Icon(Icons.Rounded.QueueMusic, null, tint = Color(0xFF1E88E5)) },
-                                        onClick = {
-                                            navController.navigate(Screens.Playlists.route) { popUpTo(0) }
-                                            scope.launch { drawerState.close() }
-                                        },
-                                        modifier = Modifier.padding(horizontal = 12.dp)
-                                    )
-                                    NavigationDrawerItem(
-                                        label = { Text("设置") },
-                                        selected = navBackStackEntry?.destination?.route == "settings",
-                                        icon = { Icon(Icons.Rounded.Settings, null, tint = Color(0xFF4CAF50)) },
-                                        onClick = {
-                                            navController.navigate("settings")
-                                            scope.launch { drawerState.close() }
-                                        },
-                                        modifier = Modifier.padding(horizontal = 12.dp)
-                                    )
+                                    Spacer(Modifier.height(16.dp))
+
+                                    androidx.compose.material3.Card(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                        )
+                                    ) {
+                                        Column {
+                                            DrawerItem("歌曲", Icons.Rounded.MusicNote, Color(0xFF4CAF50),
+                                                navBackStackEntry?.destination?.route == Screens.Songs.route) {
+                                                navController.navigate(Screens.Songs.route) { popUpTo(0) }
+                                                scope.launch { drawerState.close() }
+                                            }
+                                            DrawerItem("专辑", Icons.Rounded.Album, Color(0xFFE53935),
+                                                navBackStackEntry?.destination?.route == Screens.Albums.route) {
+                                                navController.navigate(Screens.Albums.route) { popUpTo(0) }
+                                                scope.launch { drawerState.close() }
+                                            }
+                                            DrawerItem("艺术家", Icons.Rounded.Person, Color(0xFFFFB300),
+                                                navBackStackEntry?.destination?.route == Screens.Artists.route) {
+                                                navController.navigate(Screens.Artists.route) { popUpTo(0) }
+                                                scope.launch { drawerState.close() }
+                                            }
+                                            DrawerItem("文件夹", Icons.Rounded.Folder, Color(0xFF7E57C2),
+                                                navBackStackEntry?.destination?.route == Screens.Folders.route) {
+                                                navController.navigate(Screens.Folders.route) { popUpTo(0) }
+                                                scope.launch { drawerState.close() }
+                                            }
+                                            DrawerItem("歌单", Icons.Rounded.QueueMusic, Color(0xFF1E88E5),
+                                                navBackStackEntry?.destination?.route == Screens.Playlists.route) {
+                                                navController.navigate(Screens.Playlists.route) { popUpTo(0) }
+                                                scope.launch { drawerState.close() }
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(8.dp))
+
+                                    androidx.compose.material3.Card(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                        )
+                                    ) {
+                                        Column {
+                                            DrawerItem("设置", Icons.Rounded.Settings, Color(0xFF4CAF50),
+                                                navBackStackEntry?.destination?.route == "settings") {
+                                                navController.navigate("settings")
+                                                scope.launch { drawerState.close() }
+                                            }
+                                            DrawerItem("关于", Icons.Rounded.Info, Color(0xFF1E88E5), false) {
+                                                navController.navigate("settings/about")
+                                                scope.launch { drawerState.close() }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         ) {
@@ -1032,3 +1026,34 @@ val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error(
 val LocalPlayerAwareWindowInsets = compositionLocalOf<WindowInsets> { error("No player WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSnackbarHostState = staticCompositionLocalOf<SnackbarHostState> { error("No SnackbarHostState provided") }
+
+@Composable
+private fun DrawerItem(
+    label: String,
+    icon: ImageVector,
+    tint: Color,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.width(20.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
