@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Pause
@@ -169,8 +170,8 @@ fun MiniPlayer(
                 }
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.skip_next),
-                    tint = iconButtonColor.copy(alpha = (if (canSkipNext) 1f else 0.5f)),
+                    imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
+                    tint = iconButtonColor,
                     contentDescription = null
                 )
             }

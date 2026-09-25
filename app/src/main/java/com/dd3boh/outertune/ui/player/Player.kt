@@ -70,6 +70,7 @@ import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarDefaults
@@ -636,6 +637,8 @@ fun ControlsContent(
 ) {
     val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    val menuState = LocalMenuState.current
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val repeatMode by playerConnection.repeatMode.collectAsState()
@@ -832,12 +835,12 @@ fun ControlsContent(
                 modifier = Modifier.size(28.dp),
                 color = iconColor.copy(alpha = 0.8f),
                 onClick = {
-                    LocalMenuState.current.show {
+                    menuState.show {
                         PlayerMenu(
-                            mediaMetadata = playerConnection.mediaMetadata.value,
+                            mediaMetadata = mediaMetadata,
                             navController = navController,
                             playerBottomSheetState = playerSheetState,
-                            onDismiss = { LocalMenuState.current.dismiss() }
+                            onDismiss = { menuState.dismiss() }
                         )
                     }
                 }
