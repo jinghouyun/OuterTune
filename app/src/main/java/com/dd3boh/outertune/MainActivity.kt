@@ -415,6 +415,9 @@ class MainActivity : ComponentActivity() {
 //                        onDispose { removeOnNewIntentListener(listener) }
 //                    }
 
+                    val drawerState = rememberDrawerState(DrawerValue.Closed)
+                    val drawerScope = rememberCoroutineScope()
+
                     CompositionLocalProvider(
                         LocalDatabase provides database,
                         LocalContentColor provides contentColorFor(MaterialTheme.colorScheme.surface),
@@ -424,10 +427,8 @@ class MainActivity : ComponentActivity() {
                         LocalDownloadUtil provides downloadUtil,
                         LocalShimmerTheme provides ShimmerTheme,
                         LocalSnackbarHostState provides snackbarHostState,
-                        LocalDrawerOpen provides { scope.launch { drawerState.open() } },
+                        LocalDrawerOpen provides { drawerScope.launch { drawerState.open() } },
                     ) {
-                        val drawerState = rememberDrawerState(DrawerValue.Closed)
-                        val scope = rememberCoroutineScope()
 
                         ModalNavigationDrawer(
                             drawerState = drawerState,
@@ -504,27 +505,27 @@ class MainActivity : ComponentActivity() {
                                             DrawerItem("歌曲", Icons.Rounded.MusicNote, Color(0xFF4CAF50),
                                                 navBackStackEntry?.destination?.route == Screens.Songs.route) {
                                                 navController.navigate(Screens.Songs.route) { popUpTo(0) }
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("专辑", Icons.Rounded.Album, Color(0xFFE53935),
                                                 navBackStackEntry?.destination?.route == Screens.Albums.route) {
                                                 navController.navigate(Screens.Albums.route) { popUpTo(0) }
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("艺术家", Icons.Rounded.Person, Color(0xFFFFB300),
                                                 navBackStackEntry?.destination?.route == Screens.Artists.route) {
                                                 navController.navigate(Screens.Artists.route) { popUpTo(0) }
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("文件夹", Icons.Rounded.Folder, Color(0xFF7E57C2),
                                                 navBackStackEntry?.destination?.route == Screens.Folders.route) {
                                                 navController.navigate(Screens.Folders.route) { popUpTo(0) }
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("歌单", Icons.Rounded.QueueMusic, Color(0xFF1E88E5),
                                                 navBackStackEntry?.destination?.route == Screens.Playlists.route) {
                                                 navController.navigate(Screens.Playlists.route) { popUpTo(0) }
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                         }
                                     }
@@ -540,7 +541,7 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         Column {
                                             DrawerItem("扫描音乐", Icons.Rounded.Refresh, Color(0xFF7E57C2), false) {
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                                 coroutineScope.launch(lmScannerCoroutine) {
                                                     scanInit(
                                                         this@MainActivity, database, downloadUtil, coroutineScope, playerConnection,
@@ -551,16 +552,16 @@ class MainActivity : ComponentActivity() {
                                             DrawerItem("统计", Icons.Rounded.Info, Color(0xFFE53935),
                                                 navBackStackEntry?.destination?.route == "stats") {
                                                 navController.navigate("stats")
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("设置", Icons.Rounded.Settings, Color(0xFF4CAF50),
                                                 navBackStackEntry?.destination?.route == "settings") {
                                                 navController.navigate("settings")
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                             DrawerItem("关于", Icons.Rounded.Info, Color(0xFF1E88E5), false) {
                                                 navController.navigate("settings/about")
-                                                scope.launch { drawerState.close() }
+                                                drawerScope.launch { drawerState.close() }
                                             }
                                         }
                                     }

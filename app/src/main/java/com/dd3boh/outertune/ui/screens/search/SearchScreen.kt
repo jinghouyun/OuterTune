@@ -106,7 +106,7 @@ fun SearchBarContainer(
         Screens.Artists.route -> stringResource(R.string.artists)
         Screens.Folders.route -> stringResource(R.string.folders)
         Screens.Playlists.route -> stringResource(R.string.playlists)
-        Screens.History.route -> stringResource(R.string.history)
+        "history" -> stringResource(R.string.history)
         "settings" -> stringResource(R.string.settings)
         else -> null
     }
