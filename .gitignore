@@ -106,4 +106,4 @@ lint/tmp/
 
 # misc
 .DS_Store
-prebuilt/
+# prebuilt/  -- 需要提交，包含预编译 aar
