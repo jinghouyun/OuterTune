@@ -105,16 +105,12 @@ inline fun ListItem(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = if (isActive) {
-            modifier // playing highlight
+        modifier = if (isActive && isSelected == true) {
+            modifier // playing + selected
                 .height(ListItemHeight)
                 .padding(horizontal = 8.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(
-                    color = // selected active
-                        if (isSelected == true) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                        else MaterialTheme.colorScheme.secondaryContainer
-                )
+                .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
         } else if (isSelected == true) {
             modifier // inactive selected
                 .height(ListItemHeight)
@@ -122,7 +118,7 @@ inline fun ListItem(
                 .clip(RoundedCornerShape(8.dp))
                 .background(color = MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.4f))
         } else {
-            modifier // default
+            modifier // default (Salt Player: no background for active song, just colored text)
                 .height(ListItemHeight)
                 .padding(horizontal = 8.dp)
         }
@@ -164,7 +160,8 @@ inline fun ListItem(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
 
             if (subtitle != null) {
@@ -197,7 +194,8 @@ fun ListItem(
         if (!subtitle.isNullOrEmpty()) {
             Text(
                 text = subtitle,
-                color = MaterialTheme.colorScheme.secondary,
+                color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                else MaterialTheme.colorScheme.secondary,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
