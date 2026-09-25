@@ -99,6 +99,7 @@ import com.dd3boh.outertune.lyrics.LyricsHelper
 import com.dd3boh.outertune.models.MediaMetadata
 import com.dd3boh.outertune.models.MultiQueueObject
 import com.dd3boh.outertune.models.toMediaMetadata
+import com.dd3boh.outertune.remote.RemoteMusicRepository
 import com.dd3boh.outertune.playback.queues.ListQueue
 import com.dd3boh.outertune.playback.queues.Queue
 import com.dd3boh.outertune.utils.CoilBitmapLoader
@@ -167,6 +168,9 @@ class MusicService : MediaLibraryService(),
     @Inject
     @DownloadCache
     lateinit var downloadCache: SimpleCache
+
+    @Inject
+    lateinit var remoteRepository: RemoteMusicRepository
 
     lateinit var player: ExoPlayer
     private lateinit var mediaSession: MediaLibrarySession
@@ -607,6 +611,23 @@ class MusicService : MediaLibraryService(),
             if (isDownload || isCache) {
                 Log.d(TAG, "PLAYING: remote song (cache = ${isCache}, download = ${isDownload})")
                 return@Factory dataSpec
+            }
+
+            // (d) Remote (online) song: resolve the real stream URL via the network layer.
+            if (mediaId.startsWith("NM")) {
+                songUrlCache[mediaId]?.let {
+                    Log.d(TAG, "PLAYING: remote url cache hit")
+                    return@Factory dataSpec.withUri(it.first.toUri())
+                }
+                Log.d(TAG, "PLAYING: resolving remote stream url for $mediaId")
+                val streamUrl = runBlocking { remoteRepository.resolveStreamUrl(mediaId) }
+                    ?: throw PlaybackException(
+                        "No remote stream url for $mediaId",
+                        Throwable(),
+                        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
+                    )
+                songUrlCache[mediaId] = streamUrl to 0L
+                return@Factory dataSpec.withUri(streamUrl.toUri())
             }
 
             throw PlaybackException(

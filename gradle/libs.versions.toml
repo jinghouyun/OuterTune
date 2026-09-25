@@ -13,6 +13,7 @@ media3 = "1.10.1"
 room = "2.8.4"
 hilt = "2.60.1"
 ksp = "2.3.4"
+okhttp = "4.12.0"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
@@ -58,6 +59,8 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 
 apache-lang3 = { group = "org.apache.commons", name = "commons-lang3", version = "3.20.0" }
+
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 
 hilt = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }

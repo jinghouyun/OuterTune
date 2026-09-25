@@ -239,6 +239,8 @@ dependencies {
 
     implementation(libs.apache.lang3)
 
+    implementation(libs.okhttp)
+
     implementation(libs.hilt)
     ksp(libs.hilt.compiler)
 
