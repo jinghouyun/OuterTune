@@ -106,9 +106,11 @@ object WySource : RemoteMusicSource {
             val json = JSONObject(resp)
             val lrc = json.optJSONObject("lrc")?.optString("lyric")
             val tlyric = json.optJSONObject("tlyric")?.optString("lyric")
+            val rlyric = json.optJSONObject("romalrc")?.optString("lyric")
             RemoteLyric(
                 lyric = lrc?.takeIf { it.isNotEmpty() },
-                translated = tlyric?.takeIf { it.isNotEmpty() }
+                translated = tlyric?.takeIf { it.isNotEmpty() },
+                roman = rlyric?.takeIf { it.isNotEmpty() }
             )
         }.getOrNull()
     }
@@ -128,6 +130,56 @@ object WySource : RemoteMusicSource {
             (0 until items.length()).mapNotNull { i ->
                 items.getJSONObject(i).optString("searchWord").takeIf { it.isNotEmpty() }
             }.take(10)
+        }.getOrDefault(emptyList())
+    }
+
+    /** NetEase rank boards list. */
+    fun getRankBoards(): List<Pair<String, String>> {
+        return runCatching {
+            val form = WyCrypto.weapi(JSONObject())
+            val headers = mapOf("User-Agent" to UA, "Referer" to "https://music.163.com")
+            val resp = RemoteHttp.postForm(
+                "https://music.163.com/weapi/toplist", form, headers
+            )
+            val json = JSONObject(resp)
+            val list = json.optJSONArray("list") ?: return emptyList()
+            (0 until list.length()).mapNotNull { i ->
+                val o = list.getJSONObject(i)
+                val id = o.optLong("id").toString()
+                val name = o.optString("name")
+                if (id.isNotEmpty() && name.isNotEmpty()) id to name else null
+            }.take(15)
+        }.getOrDefault(emptyList())
+    }
+
+    /** NetEase rank board songs. */
+    fun getRankSongs(boardId: String, limit: Int = 50): List<RemoteSong> {
+        return runCatching {
+            val payload = JSONObject()
+                .put("id", boardId.toLong())
+                .put("n", limit)
+            val form = WyCrypto.weapi(payload)
+            val headers = mapOf("User-Agent" to UA, "Referer" to "https://music.163.com")
+            val resp = RemoteHttp.postForm(
+                "https://music.163.com/weapi/v3/playlist/detail", form, headers
+            )
+            val json = JSONObject(resp)
+            val tracks = json.optJSONObject("playlist")?.optJSONArray("tracks") ?: return emptyList()
+            (0 until tracks.length()).mapNotNull { i ->
+                val item = tracks.getJSONObject(i)
+                val id = item.getLong("id").toString()
+                val name = item.optString("name")
+                val ar = item.optJSONArray("ar")
+                val artists = mutableListOf<String>()
+                ar?.let { for (j in 0 until it.length()) artists.add(it.getJSONObject(j).optString("name")) }
+                val al = item.optJSONObject("al")
+                val pic = al?.optString("picUrl")?.let { if (it.startsWith("http://")) "https://" + it.substring(7) else it }
+                RemoteSong(
+                    id = "NMwy$id", source = "wy", sourceSongId = id,
+                    title = name, artists = artists, albumName = al?.optString("name"),
+                    durationSec = item.optInt("dt", 0) / 1000, thumbnailUrl = pic,
+                )
+            }
         }.getOrDefault(emptyList())
     }
 }

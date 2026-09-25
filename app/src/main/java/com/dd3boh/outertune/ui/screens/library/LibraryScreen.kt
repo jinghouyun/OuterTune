@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -250,6 +251,26 @@ fun LibraryScreen(
             Column {
                 Text("人声分离", style = MaterialTheme.typography.titleMedium)
                 Text("查看和管理已分离人声/伴奏的歌曲", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+
+    // Rank board entry card
+    androidx.compose.material3.ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable { navController.navigate("rank") }
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.padding(horizontal = 8.dp))
+            Column {
+                Text("排行榜", style = MaterialTheme.typography.titleMedium)
+                Text("网易云音乐排行榜", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

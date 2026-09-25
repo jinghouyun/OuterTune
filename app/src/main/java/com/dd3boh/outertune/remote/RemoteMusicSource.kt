@@ -37,6 +37,7 @@ data class RemoteSong(
 data class RemoteLyric(
     val lyric: String?,
     val translated: String? = null,
+    val roman: String? = null,
 )
 
 /**
