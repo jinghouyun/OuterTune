@@ -5,12 +5,14 @@ import android.media.audiofx.AudioEffect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,9 +43,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -195,105 +201,106 @@ fun PlayerMenu(
     }
 
     if (showSleepTimerDialog) {
-        AlertDialog(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            properties = DialogProperties(usePlatformDefaultWidth = false),
+        androidx.compose.ui.window.Dialog(
             onDismissRequest = { showSleepTimerDialog = false },
-            icon = { Icon(imageVector = Icons.Rounded.Timer, contentDescription = null) },
-            title = { Text(stringResource(R.string.sleep_timer)) },
-            confirmButton = {
-                TextButton(
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(24.dp)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "睡眠定时",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "时长",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "${sleepTimerValue.roundToInt()} 分钟",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                Slider(
+                    value = sleepTimerValue,
+                    onValueChange = { sleepTimerValue = it },
+                    valueRange = 1f..120f,
+                    steps = 119,
+                    colors = androidx.compose.material3.SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                Button(
                     onClick = {
                         showSleepTimerDialog = false
                         playerConnection.service.sleepTimer.start(sleepTimerValue.roundToInt())
-                    }
-                ) {
-                    Text(stringResource(android.R.string.ok))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showSleepTimerDialog = false }
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-            text = {
-                val focusRequester = remember {
-                    FocusRequester()
-                }
-
-                var showDialog by remember {
-                    mutableStateOf(false)
-                }
-
-                LaunchedEffect(showDialog) {
-                    if (showDialog) {
-                        delay(300)
-                        focusRequester.requestFocus()
-                    }
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val pluralString = pluralStringResource(
-                        R.plurals.minute,
-                        sleepTimerValue.roundToInt(),
-                        sleepTimerValue.roundToInt()
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
+                ) {
+                    Text("开始", color = Color.White)
+                }
 
-                    val endTime = System.currentTimeMillis() + (sleepTimerValue.roundToInt() * 60 * 1000).toLong()
-                    val calendarNow = Calendar.getInstance()
-                    val calendarEnd = Calendar.getInstance().apply { timeInMillis = endTime }
+                Spacer(Modifier.height(16.dp))
 
-                    // show date if it will span to next day
-                    val endTimeString =
-                        if (calendarNow.get(Calendar.DAY_OF_YEAR) == calendarEnd.get(Calendar.DAY_OF_YEAR) &&
-                            calendarNow.get(Calendar.YEAR) == calendarEnd.get(Calendar.YEAR)
-                        ) {
-                            SimpleDateFormat.getTimeInstance(SimpleDateFormat.SHORT, Locale.getDefault())
-                                .format(Date(endTime))
-                        } else {
-                            SimpleDateFormat.getDateTimeInstance(
-                                SimpleDateFormat.SHORT,
-                                SimpleDateFormat.SHORT,
-                                Locale.getDefault()
-                            ).format(Date(endTime))
-                        }
-
-                    Text(
-                        text = "$pluralString\n$endTimeString",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp)
-                            .clip(shape = RoundedCornerShape(8.dp))
-                            .clickable {
-                                showDialog = true
-                            }
-                    )
-
-                    // manual input
-                    if (showDialog) {
-                        val initialText = TextFieldValue(
-                            text = sleepTimerValue.roundToInt().toString(),
-                            selection = TextRange(0, sleepTimerValue.roundToInt().toString().length),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "自动延长到整首歌播完",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
                         )
-
-                        val (textFieldValue, onTextFieldValueChange) = remember {
-                            mutableStateOf(initialText)
-                        }
-
-                        TextField(
-                            value = textFieldValue,
-                            onValueChange = onTextFieldValueChange,
-                            placeholder = { pluralString },
-                            singleLine = true,
-                            leadingIcon = { Icon(Icons.Rounded.MoreTime, null) },
-                            colors = OutlinedTextFieldDefaults.colors(),
-                            keyboardOptions = KeyboardOptions(
-                                imeAction = ImeAction.Done,
+                        Text(
+                            text = "延长时间会以类似 +5:20 的形式标识",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = false,
+                        onCheckedChange = {},
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
+            }
+        }
+    }
                                 keyboardType = KeyboardType.Number
                             ),
                             keyboardActions = KeyboardActions(
