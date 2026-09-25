@@ -188,8 +188,8 @@ fun Lyrics(
         }
     }
 
-    val textColor = MaterialTheme.colorScheme.secondary
-    val prevTextColor = MaterialTheme.colorScheme.primary
+    val textColor = androidx.compose.ui.graphics.Color.White
+    val prevTextColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.4f)
 
     var currentLineIndex by remember {
         mutableIntStateOf(-1)
@@ -422,9 +422,9 @@ fun Lyrics(
                                     if (!isSynced || isHighlighted) {
                                         1f
                                     } else if (isConsumed) {
-                                        0.6f
+                                        0.35f
                                     } else {
-                                        0.5f
+                                        0.3f
                                     }
                                 )
                             )
