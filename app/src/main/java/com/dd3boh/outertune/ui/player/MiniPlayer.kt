@@ -66,7 +66,6 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_READY
 import coil3.compose.AsyncImage
-import com.dd3boh.outertune.LocalHazeState
 import com.dd3boh.outertune.LocalPlayerAwareWindowInsets
 import com.dd3boh.outertune.LocalPlayerConnection
 import com.dd3boh.outertune.R
@@ -76,7 +75,6 @@ import com.dd3boh.outertune.constants.ThumbnailCornerRadius
 import com.dd3boh.outertune.extensions.togglePlayPause
 import com.dd3boh.outertune.models.MediaMetadata
 import com.dd3boh.outertune.ui.component.button.IconButton
-import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
@@ -87,7 +85,6 @@ fun MiniPlayer(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val queueBoard by playerConnection.queueBoard.collectAsState()
-    val hazeState = LocalHazeState.current
 
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val playbackState by playerConnection.playbackState.collectAsState()
@@ -126,10 +123,9 @@ fun MiniPlayer(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxSize()
-                .hazeChild(state = hazeState)
                 .shadow(elevation = 8.dp, shape = RoundedCornerShape(28.dp), clip = false)
                 .clip(RoundedCornerShape(28.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
                 .border(
                     width = 0.5.dp,
                     color = Color.White.copy(alpha = 0.12f),
