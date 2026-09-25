@@ -28,8 +28,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import kotlinx.coroutines.launch
 import androidx.navigation.NavController
 import com.dd3boh.outertune.constants.AutoPlayOnLaunchKey
 import com.dd3boh.outertune.constants.AutoOpenPlayerKey
@@ -142,6 +150,50 @@ fun RemoteSourceSettings(
                 description = "查看和管理已分离的歌曲",
                 icon = { Icon(Icons.Rounded.Mic, null) },
                 onClick = { navController.navigate("vocal_separation") }
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        PreferenceGroupTitle(title = "备份与恢复")
+        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            val db = com.dd3boh.outertune.LocalDatabase.current
+            var message by remember { mutableStateOf<String?>(null) }
+
+            val createLauncher = rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
+            ) { uri ->
+                uri ?: return@rememberLauncherForActivityResult
+                scope.launch {
+                    val json = com.dd3boh.outertune.utils.BackupManager.exportBackup(context, db)
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+                    message = "备份已保存"
+                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+            val openLauncher = rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+            ) { uri ->
+                uri ?: return@rememberLauncherForActivityResult
+                scope.launch {
+                    val json = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: return@launch
+                    val result = com.dd3boh.outertune.utils.BackupManager.importBackup(context, db, json)
+                    android.widget.Toast.makeText(context, result, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+
+            PreferenceEntry(
+                title = { Text("备份到文件") },
+                description = "导出歌单和设置为 JSON",
+                icon = { Icon(Icons.Rounded.Settings, null) },
+                onClick = { createLauncher.launch("outertune_backup.json") }
+            )
+            PreferenceEntry(
+                title = { Text("从文件恢复") },
+                description = "从 JSON 文件恢复歌单和设置",
+                icon = { Icon(Icons.Rounded.Settings, null) },
+                onClick = { openLauncher.launch(arrayOf("application/json")) }
             )
         }
     }
