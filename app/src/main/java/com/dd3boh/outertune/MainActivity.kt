@@ -358,12 +358,13 @@ class MainActivity : ComponentActivity() {
                     Log.v(MAIN_TAG, "RC-2.2")
 
                     fun getNavPadding(): Dp {
-                        return if (!useNavRail) (if (slimNav) 52.dp else 68.dp) else MinMiniPlayerHeight
+                        // 现在用侧边抽屉导航，没有底部导航栏了，不需要留高度
+                        return 0.dp
                     }
 
                     val playerBottomSheetState = rememberBottomSheetState(
                         dismissedBound = 0.dp,
-                        collapsedBound = bottomInset + MiniPlayerHeight + getNavPadding(),
+                        collapsedBound = bottomInset + MiniPlayerHeight + 4.dp,
                         expandedBound = maxHeight,
                     )
 

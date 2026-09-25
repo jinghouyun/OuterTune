@@ -280,7 +280,7 @@ fun PortraitPlayer(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
-            .padding(bottom = queueSheetState.collapsedBound)
+            .padding(bottom = 8.dp)
     ) {
         // Top row: title + artist on left, cast icon on right.
         // Staggers in mid-transition, sliding up from below.
@@ -405,9 +405,6 @@ fun PortraitPlayer(
         ) {
             ControlsContent(playerSheetState, queueSheetState, navController, queueBoard)
         }
-
-
-        Spacer(Modifier.height(24.dp))
 
 
     }
