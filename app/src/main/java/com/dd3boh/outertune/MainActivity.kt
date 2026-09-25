@@ -198,6 +198,8 @@ import com.dd3boh.outertune.utils.rememberEnumPreference
 import com.dd3boh.outertune.utils.rememberPreference
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -323,6 +325,8 @@ class MainActivity : ComponentActivity() {
                 val windowsInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
                 val bottomInset = with(density) { windowsInsets.getBottom(density).toDp() }
 
+                val hazeState = remember { HazeState() }
+
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
 
@@ -434,6 +438,7 @@ class MainActivity : ComponentActivity() {
                         LocalShimmerTheme provides ShimmerTheme,
                         LocalSnackbarHostState provides snackbarHostState,
                         LocalDrawerOpen provides { drawerScope.launch { drawerState.open() } },
+                        LocalHazeState provides hazeState,
                     ) {
 
                         ModalNavigationDrawer(
@@ -649,7 +654,9 @@ class MainActivity : ComponentActivity() {
                                             )
                                         ) { it / 14 }
                                     },
-                                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                                    modifier = Modifier
+                                        .nestedScroll(scrollBehavior.nestedScrollConnection)
+                                        .haze(state = hazeState)
                                 )
                                 {
                                     composable(Screens.Home.route) {
@@ -1112,6 +1119,7 @@ val LocalPlayerAwareWindowInsets = compositionLocalOf<WindowInsets> { error("No 
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSnackbarHostState = staticCompositionLocalOf<SnackbarHostState> { error("No SnackbarHostState provided") }
 val LocalDrawerOpen = staticCompositionLocalOf<() -> Unit> { error("No drawer open action provided") }
+val LocalHazeState = staticCompositionLocalOf<HazeState> { error("No HazeState provided") }
 
 @Composable
 private fun DrawerItem(

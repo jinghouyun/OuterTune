@@ -225,7 +225,7 @@ fun BottomSheetPlayer(
                 useDarkTheme = useDarkTheme,
             )
         },
-        collapsedBackgroundColor = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
+        collapsedBackgroundColor = Color.Transparent,
         onDismiss = {
             playerConnection.softKillPlayer()
         },

@@ -245,6 +245,7 @@ dependencies {
     // misc
     implementation(libs.aboutlibraries.core)
     implementation(libs.aboutlibraries.compose.m3)
+    implementation(libs.haze)
 
     // modules
     implementation(project(":material-color-utilities"))

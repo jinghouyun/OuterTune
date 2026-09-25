@@ -13,6 +13,7 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -36,7 +37,6 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -65,6 +66,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_READY
 import coil3.compose.AsyncImage
+import com.dd3boh.outertune.LocalHazeState
 import com.dd3boh.outertune.LocalPlayerAwareWindowInsets
 import com.dd3boh.outertune.LocalPlayerConnection
 import com.dd3boh.outertune.R
@@ -74,6 +76,8 @@ import com.dd3boh.outertune.constants.ThumbnailCornerRadius
 import com.dd3boh.outertune.extensions.togglePlayPause
 import com.dd3boh.outertune.models.MediaMetadata
 import com.dd3boh.outertune.ui.component.button.IconButton
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
@@ -84,6 +88,7 @@ fun MiniPlayer(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val queueBoard by playerConnection.queueBoard.collectAsState()
+    val hazeState = LocalHazeState.current
 
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val playbackState by playerConnection.playbackState.collectAsState()
@@ -116,21 +121,27 @@ fun MiniPlayer(
             .fillMaxWidth()
             .height(MiniPlayerHeight)
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-//            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp))
+            .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
-        LinearProgressIndicator(
-            progress = { (position.toFloat() / duration).coerceIn(0f, 1f) },
-            drawStopIndicator = { },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .align(Alignment.BottomCenter),
-        )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier
-
-                .fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeChild(
+                    state = hazeState,
+                    style = HazeStyle(
+                        backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+                        blurRadius = 20.dp,
+                        tint = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f),
+                    )
+                )
+                .shadow(elevation = 8.dp, shape = RoundedCornerShape(28.dp), clip = false)
+                .clip(RoundedCornerShape(28.dp))
+                .border(
+                    width = 0.5.dp,
+                    color = Color.White.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(28.dp)
+                )
         ) {
             val iconButtonColor = MaterialTheme.colorScheme.onSecondaryContainer
             Box(Modifier.weight(1f)) {
@@ -180,6 +191,16 @@ fun MiniPlayer(
                 )
             }
         }
+
+        LinearProgressIndicator(
+            progress = { (position.toFloat() / duration).coerceIn(0f, 1f) },
+            drawStopIndicator = { },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 8.dp),
+        )
     }
 }
 
