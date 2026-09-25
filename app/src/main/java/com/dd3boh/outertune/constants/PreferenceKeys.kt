@@ -184,6 +184,26 @@ val RemoteSourceTxEnabledKey = booleanPreferencesKey("remoteSourceTxEnabled")
 val RemoteSourceKgEnabledKey = booleanPreferencesKey("remoteSourceKgEnabled")
 val RemoteSourceKwEnabledKey = booleanPreferencesKey("remoteSourceKwEnabled")
 
+/** App behavior additions */
+val AutoPlayOnLaunchKey = booleanPreferencesKey("autoPlayOnLaunch")
+val AutoOpenPlayerKey = booleanPreferencesKey("autoOpenPlayerOnLaunch")
+val RememberPlaybackPositionKey = booleanPreferencesKey("rememberPlaybackPosition")
+val AudioFocusPauseKey = booleanPreferencesKey("audioFocusPause")
+val NotificationArtworkKey = booleanPreferencesKey("notificationArtwork")
+val ShowTranslationKey = booleanPreferencesKey("showTranslation")
+val ShowRomanizationKey = booleanPreferencesKey("showRomanization")
+val S2TConvertKey = booleanPreferencesKey("s2tConvert") // 简体转繁体显示
+val MiniPlayerDraggableKey = booleanPreferencesKey("miniPlayerDraggable")
+val ListShowThumbnailKey = booleanPreferencesKey("listShowThumbnail")
+val ListFontSizeKey = stringPreferencesKey("listFontSize") // small/medium/large
+val ListRowHeightKey = stringPreferencesKey("listRowHeight") // compact/standard/loose
+val DownloadQualityKey = stringPreferencesKey("downloadQuality")
+val DownloadConcurrentKey = intPreferencesKey("downloadConcurrent")
+val DownloadNotifyKey = booleanPreferencesKey("downloadNotify")
+val DownloadLyricKey = booleanPreferencesKey("downloadLyric")
+val VocalSeparatorApiKey = stringPreferencesKey("vocalSeparatorApi")
+val VocalSeparatorApiUrlKey = stringPreferencesKey("vocalSeparatorApiUrl")
+
 //val SearchSourceKey = stringPreferencesKey("searchSource")
 
 //val VisitorDataKey = stringPreferencesKey("visitorData")

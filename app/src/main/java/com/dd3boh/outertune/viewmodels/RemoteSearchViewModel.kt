@@ -28,11 +28,11 @@ enum class RemoteSourceTab(val sourceId: String?) {
     companion object {
         val labels = mapOf(
             LOCAL to "本地",
-            WY to "网易云",
-            MG to "咪咕",
-            TX to "QQ",
-            KG to "酷狗",
-            KW to "酷我"
+            WY to "网易云音乐",
+            MG to "咪咕音乐",
+            TX to "QQ音乐",
+            KG to "酷狗音乐",
+            KW to "酷我音乐"
         )
     }
 }

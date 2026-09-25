@@ -187,6 +187,7 @@ import com.dd3boh.outertune.ui.screens.settings.LibrariesScreen
 import com.dd3boh.outertune.ui.screens.settings.LibrarySettings
 import com.dd3boh.outertune.ui.screens.settings.LocalPlayerSettings
 import com.dd3boh.outertune.ui.screens.settings.RemoteSourceSettings
+import com.dd3boh.outertune.ui.screens.library.VocalSeparationScreen
 import com.dd3boh.outertune.ui.screens.settings.LyricsSettings
 import com.dd3boh.outertune.ui.screens.settings.PlayerSettings
 import com.dd3boh.outertune.ui.screens.settings.SettingsScreen
@@ -789,6 +790,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                     composable("settings/remote_source") {
                                         RemoteSourceSettings(navController, scrollBehavior)
+                                    }
+                                    composable("vocal_separation") {
+                                        VocalSeparationScreen(navController, scrollBehavior)
                                     }
                                     composable("settings/experimental") {
                                         ExperimentalSettings(navController, scrollBehavior)
