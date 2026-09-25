@@ -109,6 +109,24 @@ class DownloadUtil @Inject constructor(
         downloadSong(song.id, song.title)
     }
 
+    /**
+     * Download a remote (online) song by first resolving its real stream URL,
+     * then enqueueing a media3 DownloadRequest against that URL.
+     */
+    fun downloadRemote(song: MediaMetadata, streamUrl: String) {
+        if (downloads.value[song.id] != null) return
+        val downloadRequest = DownloadRequest.Builder(song.id, streamUrl.toUri())
+            .setCustomCacheKey(song.id)
+            .setData(song.title.toByteArray())
+            .build()
+        DownloadService.sendAddDownload(
+            context,
+            ExoDownloadService::class.java,
+            downloadRequest,
+            false
+        )
+    }
+
     private fun downloadSong(id: String, title: String) {
         if (downloads.value[id] != null) return
         val downloadRequest = DownloadRequest.Builder(id, id.toUri())

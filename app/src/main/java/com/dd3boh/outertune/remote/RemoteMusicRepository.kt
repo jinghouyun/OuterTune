@@ -1,7 +1,10 @@
 package com.dd3boh.outertune.remote
 
 import android.util.Log
+import com.dd3boh.outertune.remote.sources.KgSource
+import com.dd3boh.outertune.remote.sources.KwSource
 import com.dd3boh.outertune.remote.sources.MgSource
+import com.dd3boh.outertune.remote.sources.TxSource
 import com.dd3boh.outertune.remote.sources.WySource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,7 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class RemoteMusicRepository @Inject constructor() {
 
-    private val sources: List<RemoteMusicSource> = listOf(WySource, MgSource)
+    private val sources: List<RemoteMusicSource> = listOf(WySource, MgSource, TxSource, KgSource, KwSource)
     private val sourceById: Map<String, RemoteMusicSource> = sources.associateBy { it.sourceId }
 
     /** In-memory cache of resolved stream URLs keyed by outer tune mediaId. */

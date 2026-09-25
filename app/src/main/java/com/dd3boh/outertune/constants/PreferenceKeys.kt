@@ -176,6 +176,14 @@ val LibraryViewTypeKey = stringPreferencesKey("libraryViewType")
 
 val PlaylistEditLockKey = booleanPreferencesKey("playlistEditLock")
 
+/** Remote (online) music source settings. */
+val RemoteSourceQualityKey = stringPreferencesKey("remoteSourceQuality") // 128k / 320k / flac
+val RemoteSourceWyEnabledKey = booleanPreferencesKey("remoteSourceWyEnabled")
+val RemoteSourceMgEnabledKey = booleanPreferencesKey("remoteSourceMgEnabled")
+val RemoteSourceTxEnabledKey = booleanPreferencesKey("remoteSourceTxEnabled")
+val RemoteSourceKgEnabledKey = booleanPreferencesKey("remoteSourceKgEnabled")
+val RemoteSourceKwEnabledKey = booleanPreferencesKey("remoteSourceKwEnabled")
+
 //val SearchSourceKey = stringPreferencesKey("searchSource")
 
 //val VisitorDataKey = stringPreferencesKey("visitorData")

@@ -2,6 +2,7 @@ package com.dd3boh.outertune.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dd3boh.outertune.playback.DownloadUtil
 import com.dd3boh.outertune.remote.RemoteMusicRepository
 import com.dd3boh.outertune.remote.RemoteSong
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,13 +20,19 @@ import javax.inject.Inject
 enum class RemoteSourceTab(val sourceId: String?) {
     LOCAL(null),
     WY("wy"),
-    MG("mg");
+    MG("mg"),
+    TX("tx"),
+    KG("kg"),
+    KW("kw");
 
     companion object {
         val labels = mapOf(
             LOCAL to "本地",
             WY to "网易云",
-            MG to "咪咕"
+            MG to "咪咕",
+            TX to "QQ",
+            KG to "酷狗",
+            KW to "酷我"
         )
     }
 }
@@ -40,6 +47,7 @@ data class RemoteSearchUiState(
 @HiltViewModel
 class RemoteSearchViewModel @Inject constructor(
     private val repository: RemoteMusicRepository,
+    private val downloadUtil: DownloadUtil,
 ) : ViewModel() {
 
     val query = MutableStateFlow("")
@@ -47,6 +55,8 @@ class RemoteSearchViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(RemoteSearchUiState())
     val uiState = _uiState.asStateFlow()
+
+    val downloadingIds = MutableStateFlow<Set<String>>(emptySet())
 
     init {
         combine(query, sourceTab) { q, tab -> q to tab }
@@ -61,5 +71,20 @@ class RemoteSearchViewModel @Inject constructor(
                 _uiState.value = RemoteSearchUiState(songs = results)
             }
             .launchIn(viewModelScope)
+    }
+
+    fun download(song: RemoteSong) {
+        if (downloadingIds.value.contains(song.id)) return
+        downloadingIds.value = downloadingIds.value + song.id
+        viewModelScope.launch {
+            try {
+                val url = repository.resolveStreamUrl(song.id)
+                if (url != null) {
+                    downloadUtil.downloadRemote(song.toMediaMetadata(), url)
+                }
+            } finally {
+                downloadingIds.value = downloadingIds.value - song.id
+            }
+        }
     }
 }

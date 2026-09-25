@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.NavigateNext
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -162,11 +163,14 @@ fun LocalSearchScreen(
                     density = density,
                 )
 
-                else -> RemoteResults(
+                else -> {
+                    val downloadingSet by remoteViewModel.downloadingIds.collectAsState()
+                    RemoteResults(
                     uiState = remoteUiState,
                     query = query,
                     isPlaying = isPlaying,
                     mediaMetadata = mediaMetadata,
+                    downloadingSet = downloadingSet,
                     onPlay = { song ->
                         val all = remoteUiState.songs
                         scope.launch(Dispatchers.IO) {
@@ -182,8 +186,10 @@ fun LocalSearchScreen(
                                 )
                             )
                         }
-                    }
+                    },
+                    onDownload = { song -> remoteViewModel.download(song) }
                 )
+                }
             }
         }
     }
@@ -341,7 +347,9 @@ private fun RemoteResults(
     query: String,
     isPlaying: Boolean,
     mediaMetadata: MediaMetadata?,
+    downloadingSet: Set<String>,
     onPlay: (RemoteSong) -> Unit,
+    onDownload: (RemoteSong) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -364,7 +372,9 @@ private fun RemoteResults(
                         song = song,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
+                        isDownloading = downloadingSet.contains(song.id),
                         onClick = { onPlay(song) },
+                        onDownload = { onDownload(song) },
                         modifier = Modifier.animateItem()
                     )
                 }
@@ -378,7 +388,9 @@ private fun RemoteSongRow(
     song: RemoteSong,
     isActive: Boolean,
     isPlaying: Boolean,
+    isDownloading: Boolean,
     onClick: () -> Unit,
+    onDownload: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     androidx.compose.foundation.layout.Row(
@@ -438,6 +450,25 @@ private fun RemoteSongRow(
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
+        }
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .padding(6.dp)
+                .clickable(onClick = onDownload),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isDownloading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    Icons.Rounded.Download,
+                    contentDescription = "下载",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
