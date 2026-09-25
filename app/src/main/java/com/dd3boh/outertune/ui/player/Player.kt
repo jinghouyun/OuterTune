@@ -274,7 +274,7 @@ fun PortraitPlayer(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
             .padding(bottom = queueSheetState.collapsedBound)
     ) {
         // Top row: title + artist on left, cast icon on right

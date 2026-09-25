@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
@@ -170,7 +171,7 @@ fun MiniPlayer(
                 }
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
+                    imageVector = Icons.Rounded.SkipNext,
                     tint = iconButtonColor,
                     contentDescription = null
                 )

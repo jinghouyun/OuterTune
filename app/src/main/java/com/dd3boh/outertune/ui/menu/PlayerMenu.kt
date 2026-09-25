@@ -292,8 +292,8 @@ fun PlayerMenu(
                         )
                     }
                     Switch(
-                        checked = false,
-                        onCheckedChange = {},
+                        checked = playerConnection.service.sleepTimer.pauseWhenSongEnd,
+                        onCheckedChange = { playerConnection.service.sleepTimer.pauseWhenSongEnd = it },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
                             checkedTrackColor = MaterialTheme.colorScheme.primary

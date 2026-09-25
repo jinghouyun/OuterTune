@@ -122,7 +122,7 @@ fun LocalSearchScreen(
 
         LazyColumn(
             state = lazyListState,
-//            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start).asPaddingValues(),
+            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start + WindowInsetsSides.End).asPaddingValues(),
             modifier = Modifier.weight(1f)
         ) {
             result.map.forEach { (filter, items) ->
