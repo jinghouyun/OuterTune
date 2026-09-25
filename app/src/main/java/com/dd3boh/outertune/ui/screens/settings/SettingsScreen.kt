@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Interests
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.SdCard
 import androidx.compose.material.icons.rounded.Storage
@@ -79,6 +80,11 @@ fun SettingsScreen(
                 title = { Text(stringResource(R.string.local_player_settings_title)) },
                 icon = { Icon(Icons.Rounded.SdCard, null, tint = Color(0xFF4CAF50)) },
                 onClick = { navController.navigate("settings/local") }
+            )
+            PreferenceEntry(
+                title = { Text("第三方音源") },
+                icon = { Icon(Icons.Rounded.Cloud, null, tint = Color(0xFFFF5722)) },
+                onClick = { navController.navigate("settings/remote_source") }
             )
         }
         Spacer(modifier = Modifier.height(16.dp))

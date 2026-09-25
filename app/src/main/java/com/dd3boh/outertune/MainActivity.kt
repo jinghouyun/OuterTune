@@ -186,6 +186,7 @@ import com.dd3boh.outertune.ui.screens.settings.InterfaceSettings
 import com.dd3boh.outertune.ui.screens.settings.LibrariesScreen
 import com.dd3boh.outertune.ui.screens.settings.LibrarySettings
 import com.dd3boh.outertune.ui.screens.settings.LocalPlayerSettings
+import com.dd3boh.outertune.ui.screens.settings.RemoteSourceSettings
 import com.dd3boh.outertune.ui.screens.settings.LyricsSettings
 import com.dd3boh.outertune.ui.screens.settings.PlayerSettings
 import com.dd3boh.outertune.ui.screens.settings.SettingsScreen
@@ -785,6 +786,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                     composable("settings/local") {
                                         LocalPlayerSettings(navController, scrollBehavior)
+                                    }
+                                    composable("settings/remote_source") {
+                                        RemoteSourceSettings(navController, scrollBehavior)
                                     }
                                     composable("settings/experimental") {
                                         ExperimentalSettings(navController, scrollBehavior)

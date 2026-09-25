@@ -68,7 +68,8 @@ class RemoteSearchViewModel @Inject constructor(
                 }
                 _uiState.value = RemoteSearchUiState(loading = true)
                 val results = repository.search(tab.sourceId!!, q, page = 1, limit = 30)
-                _uiState.value = RemoteSearchUiState(songs = results)
+                val withCovers = repository.enrichCovers(results)
+                _uiState.value = RemoteSearchUiState(songs = withCovers)
             }
             .launchIn(viewModelScope)
     }
