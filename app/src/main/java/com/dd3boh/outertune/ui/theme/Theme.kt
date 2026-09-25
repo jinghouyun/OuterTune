@@ -46,7 +46,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 // TODO: support for custom accent
-val DefaultThemeColor = Color(0xFFED5564)
+val DefaultThemeColor = Color(0xFF0470E6)
 
 @Composable
 fun OuterTuneTheme(
