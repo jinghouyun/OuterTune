@@ -35,7 +35,7 @@ jobs:
       - name: 复制 APK
         run: |
           find app/build/outputs/apk -name "*.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk app.apk
+          cp app/build/outputs/apk/full/debug/*arm64-v8a*.apk app.apk
           ls -lh app.apk
 
       - name: 上传 APK 产物
