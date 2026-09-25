@@ -456,11 +456,12 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxSize()
                         ) {
                             // Bottom layer: drawer content
-                            ModalDrawerSheet(
-                                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                            Column(
                                 modifier = Modifier
                                     .width(300.dp)
                                     .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .verticalScroll(rememberScrollState())
                             ) {
                                     Spacer(Modifier.height(40.dp))
 
