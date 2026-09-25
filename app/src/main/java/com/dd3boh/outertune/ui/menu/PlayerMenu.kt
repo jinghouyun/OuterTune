@@ -6,6 +6,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -300,79 +302,6 @@ fun PlayerMenu(
                 }
             }
         }
-    }
-                                keyboardType = KeyboardType.Number
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    val text = textFieldValue.text.toFloatOrNull()
-                                    if (text != null) {
-                                        sleepTimerValue = textFieldValue.text.toFloatOrNull() ?: sleepTimerValue
-                                    }
-                                }
-                            ),
-                            modifier = Modifier
-                                .focusRequester(focusRequester)
-                        )
-                    }
-
-                    Slider(
-                        value = sleepTimerValue,
-                        onValueChange = { sleepTimerValue = it },
-                        valueRange = 1f..120f,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    FlowRow(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Preset time options
-                        val timeIntervals = listOf(15L, 30L, 45L, 60L)
-
-                        // Create time chips for all intervals
-                        val timeChips = timeIntervals.map { interval ->
-                            val (timeString, duration) = getNextInterval(interval)
-                            TimeChip(
-                                duration = duration,
-                                composable = {
-                                    OutlinedButton(
-                                        onClick = { sleepTimerValue = duration },
-                                        modifier = Modifier.height(40.dp)
-                                    ) {
-                                        Text(timeString)
-                                    }
-                                }
-                            )
-                        }.sortedBy { it.duration } + remember {
-                            TimeChip(
-                                duration = Float.MAX_VALUE,
-                                composable = {
-                                    OutlinedButton(
-                                        onClick = {
-                                            showSleepTimerDialog = false
-                                            playerConnection.service.sleepTimer.start(-1)
-                                        },
-                                        modifier = Modifier.height(40.dp)
-                                    ) {
-                                        Text(stringResource(R.string.end_of_song))
-                                    }
-                                }
-                            )
-                        }
-
-                        timeChips.forEach { timeChip ->
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 4.dp)
-                            ) {
-                                timeChip.composable()
-                            }
-                        }
-                    }
-                }
-            }
-        )
     }
 
     var showDetailsDialog by rememberSaveable {
