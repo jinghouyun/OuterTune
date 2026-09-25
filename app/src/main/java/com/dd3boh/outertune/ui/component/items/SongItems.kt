@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.MoreVert
@@ -29,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -62,6 +64,7 @@ import com.dd3boh.outertune.models.DirectoryTree
 import com.dd3boh.outertune.ui.component.PlayingIndicatorBox
 import com.dd3boh.outertune.ui.component.SwipeToQueueBox
 import com.dd3boh.outertune.ui.component.button.IconButton
+import com.dd3boh.outertune.ui.dialog.AddToPlaylistDialog
 import com.dd3boh.outertune.ui.menu.FolderMenu
 import com.dd3boh.outertune.ui.menu.MenuState
 import com.dd3boh.outertune.ui.menu.SongMenu
@@ -102,6 +105,7 @@ fun SongListItem(
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    var showAddToPlaylist by remember { mutableStateOf(false) }
 
     val listItem: @Composable () -> Unit = {
         ListItem(
@@ -138,6 +142,14 @@ fun SongListItem(
                         onCheckedChange = onSelectedChange
                     )
                 } else {
+                    IconButton(
+                        onClick = { showAddToPlaylist = true }
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.PlaylistAdd,
+                            contentDescription = null
+                        )
+                    }
                     IconButton(
                         onClick = {
                             if (showMenu) {
@@ -210,6 +222,15 @@ fun SongListItem(
         snackbarHostState = snackbarHostState,
         swipeEnabled = swipeEnabled
     )
+
+    if (showAddToPlaylist) {
+        AddToPlaylistDialog(
+            navController = navController,
+            songIds = listOf(song.id),
+            onPreAdd = { listOf(song.id) },
+            onDismiss = { showAddToPlaylist = false }
+        )
+    }
 }
 
 @Composable
