@@ -426,7 +426,7 @@ class MainActivity : ComponentActivity() {
 //                        onDispose { removeOnNewIntentListener(listener) }
 //                    }
 
-                    var drawerOpen by rememberSaveable { mutableStateOf(false) }
+                    var drawerOpen by remember { mutableStateOf(false) }
                     val drawerScope = rememberCoroutineScope()
 
                     // Salt Player style: content slides + scales together with drawer
