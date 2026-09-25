@@ -2,6 +2,8 @@ package com.dd3boh.outertune.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dd3boh.outertune.db.MusicDatabase
+import com.dd3boh.outertune.db.entities.SearchHistory
 import com.dd3boh.outertune.playback.DownloadUtil
 import com.dd3boh.outertune.remote.RemoteMusicRepository
 import com.dd3boh.outertune.remote.RemoteSong
@@ -48,6 +50,7 @@ data class RemoteSearchUiState(
 class RemoteSearchViewModel @Inject constructor(
     private val repository: RemoteMusicRepository,
     private val downloadUtil: DownloadUtil,
+    private val database: MusicDatabase,
 ) : ViewModel() {
 
     val query = MutableStateFlow("")
@@ -58,7 +61,11 @@ class RemoteSearchViewModel @Inject constructor(
 
     val downloadingIds = MutableStateFlow<Set<String>>(emptySet())
 
+    /** Search history list (most recent first). */
+    val searchHistory = MutableStateFlow<List<String>>(emptyList())
+
     init {
+        refreshHistory()
         combine(query, sourceTab) { q, tab -> q to tab }
             .debounce(350L)
             .onEach { (q, tab) ->
@@ -66,12 +73,43 @@ class RemoteSearchViewModel @Inject constructor(
                     _uiState.value = RemoteSearchUiState()
                     return@onEach
                 }
+                // record search history
+                viewModelScope.launch {
+                    runCatching {
+                        database.insert(SearchHistory(query = q.trim()))
+                    }
+                    refreshHistory()
+                }
                 _uiState.value = RemoteSearchUiState(loading = true)
                 val results = repository.search(tab.sourceId!!, q, page = 1, limit = 30)
                 val withCovers = repository.enrichCovers(results)
                 _uiState.value = RemoteSearchUiState(songs = withCovers)
             }
             .launchIn(viewModelScope)
+    }
+
+    private fun refreshHistory() {
+        viewModelScope.launch {
+            runCatching {
+                database.searchHistory("").collect { list ->
+                    searchHistory.value = list.map { it.query }.take(15)
+                }
+            }
+        }
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch {
+            runCatching { database.clearSearchHistory() }
+            searchHistory.value = emptyList()
+        }
+    }
+
+    fun removeHistory(query: String) {
+        viewModelScope.launch {
+            runCatching { database.delete(SearchHistory(query = query)) }
+            searchHistory.value = searchHistory.value.filterNot { it == query }
+        }
     }
 
     fun download(song: RemoteSong) {

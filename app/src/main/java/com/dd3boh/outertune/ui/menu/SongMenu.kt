@@ -1,6 +1,7 @@
 package com.dd3boh.outertune.ui.menu
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.LibraryAddCheck
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PlaylistRemove
 import androidx.compose.material.icons.rounded.Radio
@@ -237,6 +239,23 @@ fun SongMenu(
                 }
             )
 
+
+        GridMenuItem(
+            icon = Icons.Rounded.Mic,
+            title = R.string.vocal_separation
+        ) {
+            com.dd3boh.outertune.remote.VocalSeparationStore(context).upsert(
+                com.dd3boh.outertune.remote.VocalSeparationRecord(
+                    songId = song.id,
+                    title = song.title,
+                    artist = song.artists.joinToString(" ") { it.name },
+                    thumbnailUrl = song.thumbnailUrl,
+                    status = "processing",
+                )
+            )
+            Toast.makeText(context, "已提交分离任务，请在人声分离列表查看", Toast.LENGTH_SHORT).show()
+            onDismiss()
+        }
 
         GridMenuItem(
             icon = R.drawable.artist,
