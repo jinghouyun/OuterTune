@@ -143,9 +143,9 @@ fun SearchBarContainer(
         }
     }
 
-    // Full search bar (expanded state) - only show when active or on search pages
+    // Full search bar (expanded state) - only show when user activates search
     AnimatedVisibility(
-        visible = searchActive && currentRoute?.startsWith("search") != true,
+        visible = searchActive,
         enter = fadeIn(),
         exit = fadeOut()
     ) {

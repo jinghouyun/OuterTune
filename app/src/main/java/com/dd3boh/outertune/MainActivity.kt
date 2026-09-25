@@ -101,7 +101,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -639,7 +639,7 @@ class MainActivity : ComponentActivity() {
                                     .fillMaxSize()
                                     .offset(x = (drawerProgress * 280).dp)
                                     .scale(1f - drawerProgress * 0.08f)
-                                    .clip(RoundedCornerShape(drawerProgress * 24.dp))
+                                    .clip(RoundedCornerShape((drawerProgress * 24).dp))
                             ) {
                         Box(
                             modifier = Modifier
