@@ -11,6 +11,9 @@ package com.dd3boh.outertune.ui.theme
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -61,14 +64,24 @@ fun OuterTuneTheme(
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    var themeColor by rememberSaveable(stateSaver = ColorSaver) {
+    var targetThemeColor by rememberSaveable(stateSaver = ColorSaver) {
         mutableStateOf(DefaultThemeColor)
     }
+
+    // Smoothly animate theme color transitions when switching songs
+    val themeColor by animateColorAsState(
+        targetValue = targetThemeColor,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessVeryLow
+        ),
+        label = "themeColor"
+    )
 
     LaunchedEffect(playerConnection, enableDynamicTheme, isSystemInDarkTheme) {
         val playerConnection = playerConnection
         if (!enableDynamicTheme || playerConnection == null) {
-            themeColor = DefaultThemeColor
+            targetThemeColor = DefaultThemeColor
             return@LaunchedEffect
         }
         playerConnection.service.currentMediaMetadata.collectLatest { song ->
@@ -93,7 +106,7 @@ fun OuterTuneTheme(
                         ret = result.image?.toBitmap()?.extractThemeColor() ?: DefaultThemeColor
                     }
                 }
-                themeColor = ret
+                targetThemeColor = ret
             }
         }
     }
