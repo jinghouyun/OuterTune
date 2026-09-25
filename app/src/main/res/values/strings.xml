@@ -4,6 +4,7 @@
 We recycle translations from upstream, they are pulled periodically. -->
 
 <resources>
+    <string name="app_name">Apple Music</string>
     <!-- Bottom navigation -->
     <string name="home">Home</string>
     <string name="songs">Songs</string>

@@ -21,13 +21,13 @@ const val CONTENT_TYPE_ALBUM = 4
 const val CONTENT_TYPE_PLAYLIST = 5
 const val CONTENT_TYPE_FOLDER = 6
 
-val NavigationBarHeight = 80.dp
-val MiniPlayerHeight = 64.dp
+val NavigationBarHeight = 72.dp
+val MiniPlayerHeight = 60.dp
 val MinMiniPlayerHeight = 16.dp
 val QueuePeekHeight = 48.dp
 val AppBarHeight = 64.dp
 
-val ListItemHeight = 64.dp
+val ListItemHeight = 60.dp
 val SuggestionItemHeight = 56.dp
 val SearchFilterHeight = 48.dp
 val ListThumbnailSize = 48.dp
@@ -39,12 +39,12 @@ val SmallCornerRadius = 8.dp
 val MediumCornerRadius = 12.dp
 val LargeCornerRadius = 24.dp
 
-val ThumbnailCornerRadius = 6.dp
-val AlbumCornerRadius = 16.dp
+val ThumbnailCornerRadius = 8.dp
+val AlbumCornerRadius = 20.dp
 val MenuCornerRadius = 16.dp
-val DialogCornerRadius = 32.dp
+val DialogCornerRadius = 28.dp
 
-val PlayerHorizontalPadding = 32.dp
+val PlayerHorizontalPadding = 24.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 val TopBarInsets: WindowInsets
