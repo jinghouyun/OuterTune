@@ -35,6 +35,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -71,12 +72,12 @@ fun SettingsScreen(
         ) {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.grp_library_and_content)) },
-                icon = { Icon(Icons.AutoMirrored.Rounded.LibraryBooks, null) },
+                icon = { Icon(Icons.AutoMirrored.Rounded.LibraryBooks, null, tint = Color(0xFF2196F3)) },
                 onClick = { navController.navigate("settings/library") }
             )
             PreferenceEntry(
                 title = { Text(stringResource(R.string.local_player_settings_title)) },
-                icon = { Icon(Icons.Rounded.SdCard, null) },
+                icon = { Icon(Icons.Rounded.SdCard, null, tint = Color(0xFF4CAF50)) },
                 onClick = { navController.navigate("settings/local") }
             )
         }
@@ -87,12 +88,12 @@ fun SettingsScreen(
         ) {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.appearance)) },
-                icon = { Icon(Icons.Rounded.Palette, null) },
+                icon = { Icon(Icons.Rounded.Palette, null, tint = Color(0xFFE91E63)) },
                 onClick = { navController.navigate("settings/appearance") }
             )
             PreferenceEntry(
                 title = { Text(stringResource(R.string.grp_interface)) },
-                icon = { Icon(Icons.Rounded.Interests, null) },
+                icon = { Icon(Icons.Rounded.Interests, null, tint = Color(0xFF9C27B0)) },
                 onClick = { navController.navigate("settings/interface") }
             )
         }
@@ -103,7 +104,7 @@ fun SettingsScreen(
         ) {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.player_and_audio)) },
-                icon = { Icon(Icons.Rounded.PlayArrow, null) },
+                icon = { Icon(Icons.Rounded.PlayArrow, null, tint = Color(0xFFF44336)) },
                 onClick = { navController.navigate("settings/player") }
             )
         }
@@ -114,12 +115,12 @@ fun SettingsScreen(
         ) {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.backup_restore)) },
-                icon = { Icon(Icons.Rounded.Restore, null) },
+                icon = { Icon(Icons.Rounded.Restore, null, tint = Color(0xFFFF9800)) },
                 onClick = { navController.navigate("settings/backup_restore") }
             )
             PreferenceEntry(
                 title = { Text(stringResource(R.string.storage)) },
-                icon = { Icon(Icons.Rounded.Storage, null) },
+                icon = { Icon(Icons.Rounded.Storage, null, tint = Color(0xFF00BCD4)) },
                 onClick = { navController.navigate("settings/storage") }
             )
         }
@@ -130,7 +131,7 @@ fun SettingsScreen(
         ) {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.experimental_settings_title)) },
-                icon = { Icon(Icons.Rounded.WarningAmber, null) },
+                icon = { Icon(Icons.Rounded.WarningAmber, null, tint = Color(0xFFFFC107)) },
                 onClick = { navController.navigate("settings/experimental") }
             )
         }
@@ -141,7 +142,7 @@ fun SettingsScreen(
         ) {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.about)) },
-                icon = { Icon(Icons.Rounded.Info, null) },
+                icon = { Icon(Icons.Rounded.Info, null, tint = Color(0xFF607D8B)) },
                 onClick = { navController.navigate("settings/about") }
             )
 
