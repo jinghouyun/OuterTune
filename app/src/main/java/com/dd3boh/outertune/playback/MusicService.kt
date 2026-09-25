@@ -204,6 +204,72 @@ class MusicService : MediaLibraryService(),
 
     var consecutivePlaybackErr = 0
 
+    // ---- AVRCP / Bluetooth lyrics ----
+    private var avrcpFullLyrics: String = ""
+    private val avrcpTimedLines = mutableListOf<Pair<Long, String>>()
+    private var avrcpLastLine: String = ""
+    private val avrcpHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val avrcpTick = object : Runnable {
+        override fun run() {
+            syncAvrcpLyricLine()
+            avrcpHandler.postDelayed(this, 500)
+        }
+    }
+
+    /** Load full lyrics for the current song and expose them via session extras (AVRCP). */
+    private fun loadAvrcpLyrics(mediaId: String?) {
+        avrcpHandler.removeCallbacks(avrcpTick)
+        avrcpFullLyrics = ""
+        avrcpTimedLines.clear()
+        avrcpLastLine = ""
+        if (mediaId.isNullOrEmpty()) return
+        scope.launch(SilentHandler) {
+            val raw = runCatching { database.lyrics(mediaId).first()?.lyrics }.getOrNull() ?: return@launch
+            avrcpFullLyrics = raw
+            // parse [mm:ss.xx]text timed lines
+            val regex = Regex("""\[(\d+):(\d+)(?:[.:](\d+))?\]""")
+            raw.lines().forEach { line ->
+                val results = regex.findAll(line).toList()
+                if (results.isNotEmpty()) {
+                    val text = line.replace(regex, "").trim()
+                    results.forEach { m ->
+                        val min = m.groupValues[1].toLong()
+                        val sec = m.groupValues[2].toLong()
+                        val frac = m.groupValues[3].padEnd(3, '0').take(3).toLongOrNull() ?: 0L
+                        val tMs = min * 60_000 + sec * 1000 + frac * 10
+                        avrcpTimedLines.add(tMs to text)
+                    }
+                }
+            }
+            avrcpTimedLines.sortBy { it.first }
+            publishAvrcpExtras("")
+            avrcpHandler.postDelayed(avrcpTick, 500)
+        }
+    }
+
+    private fun syncAvrcpLyricLine() {
+        if (avrcpTimedLines.isEmpty()) return
+        val pos = player.currentPosition
+        var line = ""
+        for (entry in avrcpTimedLines) {
+            if (entry.first <= pos) line = entry.second else break
+        }
+        if (line != avrcpLastLine) {
+            avrcpLastLine = line
+            publishAvrcpExtras(line)
+        }
+    }
+
+    private fun publishAvrcpExtras(currentLine: String) {
+        runCatching {
+            val extras = android.os.Bundle(mediaSession.sessionExtras ?: android.os.Bundle())
+            extras.putString("android.media.metadata.LYRICS", avrcpFullLyrics)
+            extras.putString("android.media.metadata.CURRENT_LYRIC_LINE", currentLine)
+            mediaSession.setSessionExtras(extras)
+        }
+    }
+    // ---- end AVRCP lyrics ----
+
     override fun onCreate() {
         Log.i(TAG, "Starting MusicService")
         super.onCreate()
@@ -901,6 +967,9 @@ class MusicService : MediaLibraryService(),
         }
 
         updateNotification() // also updates when queue changes
+
+        // Expose full + current lyrics to Bluetooth/AVRCP devices
+        loadAvrcpLyrics(player.currentMediaItem?.mediaId)
     }
 
     override fun onEvents(player: Player, events: Player.Events) {
@@ -918,6 +987,14 @@ class MusicService : MediaLibraryService(),
         }
         if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
             currentMediaMetadata.value = player.currentMetadata
+        }
+        // Optional: unload audio (release player) when playback becomes idle/ended
+        if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) &&
+            dataStore.get(com.dd3boh.outertune.constants.AudioReleaseOnFocusLossKey, false)
+        ) {
+            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                runCatching { player.release() }
+            }
         }
     }
 
@@ -984,6 +1061,7 @@ class MusicService : MediaLibraryService(),
 
     override fun onDestroy() {
         Log.i(TAG, "Terminating MusicService.")
+        avrcpHandler.removeCallbacks(avrcpTick)
         deInitQueue()
 
         mediaSession.player.stop()

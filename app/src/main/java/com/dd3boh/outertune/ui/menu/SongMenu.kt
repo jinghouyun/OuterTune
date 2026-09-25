@@ -71,6 +71,7 @@ import com.dd3boh.outertune.ui.dialog.DetailsDialog
 import com.dd3boh.outertune.ui.dialog.TextFieldDialog
 import com.dd3boh.outertune.utils.joinByBullet
 import com.dd3boh.outertune.utils.makeTimeString
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -83,6 +84,7 @@ fun SongMenu(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val database = LocalDatabase.current
     val density = LocalDensity.current
     val downloadUtil = LocalDownloadUtil.current
@@ -244,15 +246,19 @@ fun SongMenu(
             icon = Icons.Rounded.Mic,
             title = R.string.vocal_separation
         ) {
-            com.dd3boh.outertune.remote.VocalSeparationStore(context).upsert(
-                com.dd3boh.outertune.remote.VocalSeparationRecord(
-                    songId = song.id,
-                    title = song.title,
-                    artist = song.artists.joinToString(" ") { it.name },
-                    thumbnailUrl = song.thumbnailUrl,
-                    status = "processing",
-                )
+            val rec = com.dd3boh.outertune.remote.VocalSeparationRecord(
+                songId = song.id,
+                title = song.title,
+                artist = song.artists.joinToString(" ") { it.name },
+                thumbnailUrl = song.thumbnailUrl,
+                status = "processing",
             )
+            com.dd3boh.outertune.remote.VocalSeparationStore(context).upsert(rec)
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    com.dd3boh.outertune.remote.VocalSeparator(context).submit(rec)
+                }
+            }
             Toast.makeText(context, "已提交分离任务，请在人声分离列表查看", Toast.LENGTH_SHORT).show()
             onDismiss()
         }

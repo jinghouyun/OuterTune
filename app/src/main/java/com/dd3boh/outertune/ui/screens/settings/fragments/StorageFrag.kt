@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Slider
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +59,7 @@ import com.dd3boh.outertune.LocalDownloadUtil
 import com.dd3boh.outertune.LocalPlayerConnection
 import com.dd3boh.outertune.R
 import com.dd3boh.outertune.constants.DownloadExtraPathKey
+import com.dd3boh.outertune.constants.DownloadLyricKey
 import com.dd3boh.outertune.constants.DownloadPathKey
 import com.dd3boh.outertune.constants.MaxSongCacheSizeKey
 import com.dd3boh.outertune.constants.ScanPathsKey
@@ -67,6 +69,7 @@ import com.dd3boh.outertune.extensions.tryOrNull
 import com.dd3boh.outertune.ui.component.ListPreference
 import com.dd3boh.outertune.ui.component.PreferenceEntry
 import com.dd3boh.outertune.ui.component.SettingsClickToReveal
+import com.dd3boh.outertune.ui.component.SwitchPreference
 import com.dd3boh.outertune.ui.component.button.IconButton
 import com.dd3boh.outertune.ui.component.button.ResizableIconButton
 import com.dd3boh.outertune.ui.dialog.ActionPromptDialog
@@ -238,6 +241,14 @@ fun ColumnScope.DownloadsFrag() {
         onClick = {
             showDlPathDialog = true
         },
+    )
+
+    val (downloadLrc, onDownloadLrcChange) = rememberPreference(DownloadLyricKey, false)
+    SwitchPreference(
+        title = { Text("下载歌词 (.lrc)") },
+        icon = { Icon(Icons.Rounded.Downloading, null) },
+        checked = downloadLrc,
+        onCheckedChange = onDownloadLrcChange
     )
 
     Text(
@@ -818,6 +829,23 @@ fun ColumnScope.SongCacheFrag() {
         },
         onValueSelected = onMaxSongCacheSizeChange
     )
+
+    // Continuous cache size slider (100-2048 MB), writes the same key.
+    if (maxSongCacheSize > 0) {
+        val sliderValue = maxSongCacheSize.toFloat().coerceIn(100f, 2048f)
+        Text(
+            text = "自定义缓存上限：${sliderValue.toInt()} MB",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp)
+        )
+        Slider(
+            value = sliderValue,
+            onValueChange = { onMaxSongCacheSizeChange(it.toInt()) },
+            valueRange = 100f..2048f,
+            steps = 19,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+    }
     InfoLabel(stringResource(R.string.restart_to_apply_changes))
 
     PreferenceEntry(

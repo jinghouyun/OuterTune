@@ -21,6 +21,7 @@ import coil3.compose.AsyncImage
 import com.dd3boh.outertune.constants.TopBarInsets
 import com.dd3boh.outertune.remote.VocalSeparationRecord
 import com.dd3boh.outertune.remote.VocalSeparationStore
+import com.dd3boh.outertune.remote.VocalSeparator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,11 +53,9 @@ class VocalSeparationViewModel @Inject constructor(
 
     fun startSeparation(songId: String, title: String, artist: String, cover: String?) {
         viewModelScope.launch {
-            store.upsert(VocalSeparationRecord(songId, title, artist, cover, status = "processing"))
-            // Demo: simulate completion
-            kotlinx.coroutines.delay(3000)
-            store.upsert(VocalSeparationRecord(songId, title, artist, cover, status = "done",
-                vocalUrl = "vocal://$songId", accompanimentUrl = "accompaniment://$songId"))
+            VocalSeparator(context).submit(
+                VocalSeparationRecord(songId, title, artist, cover, status = "processing")
+            )
             refresh()
         }
     }

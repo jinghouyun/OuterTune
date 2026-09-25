@@ -16,12 +16,15 @@ import com.dd3boh.outertune.constants.S2TConvertKey
 import com.dd3boh.outertune.constants.ShowRomanizationKey
 import com.dd3boh.outertune.constants.ShowTranslationKey
 import com.dd3boh.outertune.db.MusicDatabase
+import com.dd3boh.outertune.db.entities.Playlist
+import com.dd3boh.outertune.db.entities.PlaylistEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import androidx.datastore.preferences.core.edit
+import java.time.LocalDateTime
 
 /**
  * Simple backup/restore: exports remote-source settings to JSON,
@@ -47,7 +50,24 @@ object BackupManager {
 
     suspend fun exportBackup(context: Context, database: MusicDatabase): String = withContext(Dispatchers.IO) {
         val root = JSONObject()
-        root.put("version", 1)
+        root.put("version", 2)
+
+        // Playlists + their songs
+        val playlists = JSONArray()
+        runCatching {
+            val allPlaylists = database.playlistInLibraryAsc().first()
+            allPlaylists.forEach { pl ->
+                // skip built-in system playlists
+                if (pl.id == PlaylistEntity.LIKED_PLAYLIST_ID || pl.id == PlaylistEntity.DOWNLOADED_PLAYLIST_ID) return@forEach
+                val songIds = database.playlistSongs(pl.id).first().map { it.song.id }
+                playlists.put(JSONObject().apply {
+                    put("id", pl.id)
+                    put("name", pl.playlist.name)
+                    put("songIds", JSONArray(songIds))
+                })
+            }
+        }.onFailure { Log.e("BackupManager", "export playlists failed", it) }
+        root.put("playlists", playlists)
 
         // Settings
         val settings = JSONObject()
@@ -95,6 +115,35 @@ object BackupManager {
             }
         }.onFailure { Log.e("BackupManager", "import failed", it) }
 
-        "恢复完成：$importedSettings 项设置"
+        // Playlists (version >= 2)
+        var importedPlaylists = 0
+        runCatching {
+            val arr = root.optJSONArray("playlists") ?: return@runCatching
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val name = o.optString("name", "未命名歌单")
+                val songIdsArr = o.optJSONArray("songIds")
+                val songIds = ArrayList<String>()
+                if (songIdsArr != null) {
+                    for (j in 0 until songIdsArr.length()) songIds.add(songIdsArr.getString(j))
+                }
+
+                val entity = PlaylistEntity(
+                    name = name,
+                    bookmarkedAt = LocalDateTime.now(),
+                    isLocal = true,
+                )
+                runCatching {
+                    database.insert(entity)
+                    val wrapper = Playlist(entity, 0, 0, emptyList())
+                    if (songIds.isNotEmpty()) {
+                        database.addSongToPlaylist(wrapper, songIds)
+                    }
+                    importedPlaylists++
+                }.onFailure { Log.e("BackupManager", "import playlist '$name' failed", it) }
+            }
+        }.onFailure { Log.e("BackupManager", "import playlists failed", it) }
+
+        "恢复完成：$importedSettings 项设置，$importedPlaylists 个歌单"
     }
 }

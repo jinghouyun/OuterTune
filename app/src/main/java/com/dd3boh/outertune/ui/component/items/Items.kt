@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
 import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
@@ -76,7 +77,10 @@ import coil3.imageLoader
 import com.dd3boh.outertune.LocalDownloadUtil
 import com.dd3boh.outertune.R
 import com.dd3boh.outertune.constants.GridThumbnailHeight
+import com.dd3boh.outertune.constants.ListFontSizeKey
 import com.dd3boh.outertune.constants.ListItemHeight
+import com.dd3boh.outertune.constants.ListRowHeightKey
+import com.dd3boh.outertune.constants.ListShowThumbnailKey
 import com.dd3boh.outertune.constants.ListThumbnailSize
 import com.dd3boh.outertune.constants.ThumbnailCornerRadius
 import com.dd3boh.outertune.db.entities.PlaylistEntity
@@ -87,6 +91,7 @@ import com.dd3boh.outertune.utils.LocalArtworkPath
 import com.dd3boh.outertune.utils.getDownloadState
 import com.dd3boh.outertune.utils.joinByBullet
 import com.dd3boh.outertune.utils.makeTimeString
+import com.dd3boh.outertune.utils.rememberPreference
 import java.time.LocalDateTime
 
 const val ActiveBoxAlpha = 0.6f
@@ -103,23 +108,37 @@ inline fun ListItem(
     isActive: Boolean = false,
     isAvailable: Boolean = true,
 ) {
+    // List display preferences (shared across all song/playlist lists)
+    val rowHeightKey by rememberPreference(ListRowHeightKey, "normal")
+    val fontSizeKey by rememberPreference(ListFontSizeKey, "medium")
+    val rowHeight = when (rowHeightKey) {
+        "compact" -> 50.dp
+        "loose" -> 72.dp
+        else -> ListItemHeight // 60dp
+    }
+    val titleSp = when (fontSizeKey) {
+        "small" -> 13.sp
+        "large" -> 17.sp
+        else -> 15.sp
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = if (isActive && isSelected == true) {
             modifier // playing + selected
-                .height(ListItemHeight)
+                .height(rowHeight)
                 .padding(horizontal = 8.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
         } else if (isSelected == true) {
             modifier // inactive selected
-                .height(ListItemHeight)
+                .height(rowHeight)
                 .padding(horizontal = 8.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(color = MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.4f))
         } else {
             modifier // default (Salt Player: no background for active song, just colored text)
-                .height(ListItemHeight)
+                .height(rowHeight)
                 .padding(horizontal = 8.dp)
         }
     ) {
@@ -158,6 +177,7 @@ inline fun ListItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
+                fontSize = titleSp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -191,12 +211,20 @@ fun ListItem(
     subtitle = {
         badges()
 
+        val fontSizeKey = rememberPreference(ListFontSizeKey, "medium")
+        val subtitleSp = when (fontSizeKey.value) {
+            "small" -> 11.sp
+            "large" -> 15.sp
+            else -> 13.sp
+        }
+
         if (!subtitle.isNullOrEmpty()) {
             Text(
                 text = subtitle,
                 color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                 else MaterialTheme.colorScheme.secondary,
                 style = MaterialTheme.typography.bodySmall,
+                fontSize = subtitleSp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -374,11 +402,21 @@ fun ItemThumbnail(
     albumIndex: Int? = null,
 ) {
     val context = LocalContext.current
+    val showThumbnail by rememberPreference(ListShowThumbnailKey, true)
 
     BoxWithConstraints(
         contentAlignment = Alignment.Center,
         modifier = modifier
     ) {
+        if (!showThumbnail) {
+            Icon(
+                imageVector = Icons.Rounded.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(40.dp)
+            )
+            return@BoxWithConstraints
+        }
         AsyncImage(
             imageLoader = context.imageLoader,
             model = if (thumbnailUrl?.startsWith("/storage") == true) {

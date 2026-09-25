@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import com.dd3boh.outertune.constants.DownloadExtraPathKey
+import com.dd3boh.outertune.constants.DownloadLyricKey
 import com.dd3boh.outertune.constants.DownloadPathKey
 import com.dd3boh.outertune.db.MusicDatabase
 import com.dd3boh.outertune.db.entities.PlaylistSong
@@ -28,6 +29,7 @@ import com.dd3boh.outertune.playback.DownloadUtil.Companion.STATE_DOWNLOADING
 import com.dd3boh.outertune.playback.DownloadUtil.Companion.STATE_INVALID
 import com.dd3boh.outertune.playback.downloadManager.DownloadDirectoryManagerOt
 import com.dd3boh.outertune.playback.downloadManager.DownloadManagerOt
+import com.dd3boh.outertune.remote.RemoteMusicRepository
 import com.dd3boh.outertune.utils.dataStore
 import com.dd3boh.outertune.utils.dlCoroutine
 import com.dd3boh.outertune.utils.get
@@ -35,6 +37,7 @@ import com.dd3boh.outertune.utils.reportException
 import com.dd3boh.outertune.utils.scanners.InvalidAudioFileException
 import com.dd3boh.outertune.utils.scanners.fileFromUri
 import com.dd3boh.outertune.utils.scanners.uriListFromString
+import androidx.documentfile.provider.DocumentFile
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +67,7 @@ class DownloadUtil @Inject constructor(
     val databaseProvider: DatabaseProvider,
     @DownloadCache val downloadCache: SimpleCache,
     @PlayerCache val playerCache: SimpleCache,
+    private val remoteRepository: RemoteMusicRepository,
 ) {
     val TAG = DownloadUtil::class.simpleName.toString()
 
@@ -368,6 +372,32 @@ class DownloadUtil @Inject constructor(
         Log.i(TAG, "-scanDownloads()")
     }
 
+    /**
+     * Fetch lyrics for [songId] and write them as "<title> - <artist>.lrc" into the
+     * configured download directory. Best-effort; failures are swallowed by the caller.
+     */
+    private suspend fun writeLyricForSong(songId: String) {
+        val song = database.song(songId).first() ?: return
+        val lyricText = remoteRepository.getLyric(songId)?.lyric ?: return
+        if (lyricText.isBlank()) return
+
+        val unsafe = Regex("[\\\\/:*?\"<>|]")
+        val title = song.song.title.replace(unsafe, "_").ifBlank { songId }
+        val artist = song.artists.joinToString(" ").replace(unsafe, "_")
+        val displayName = if (artist.isNotBlank()) "$title - $artist.lrc" else "$title.lrc"
+
+        val treeUri = context.dataStore.get(DownloadPathKey, "").toUri()
+        val dir = DocumentFile.fromTreeUri(context, treeUri) ?: return
+        if (!dir.isDirectory) return
+
+        // overwrite any existing lyric file of the same name
+        dir.findFile(displayName)?.delete()
+        val lrcFile = dir.createFile("application/octet-stream", displayName) ?: return
+        context.contentResolver.openOutputStream(lrcFile.uri)?.use { out ->
+            out.write(lyricText.toByteArray(Charsets.UTF_8))
+        }
+    }
+
     companion object {
         val STATE_DOWNLOADING: LocalDateTime = Instant.ofEpochMilli(1).atZone(ZoneOffset.UTC).toLocalDateTime()
         val STATE_INVALID: LocalDateTime = Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC).toLocalDateTime()
@@ -405,6 +435,11 @@ class DownloadUtil @Inject constructor(
                             val updateTime =
                                 Instant.ofEpochMilli(download.updateTimeMs).atZone(ZoneOffset.UTC).toLocalDateTime()
                             database.updateDownloadStatus(download.request.id, updateTime)
+                            // Optionally download lyrics alongside the audio file
+                            if (context.dataStore.get(DownloadLyricKey, false)) {
+                                runCatching { writeLyricForSong(download.request.id) }
+                                    .onFailure { Log.w(TAG, "Failed to write lyric for ${download.request.id}", it) }
+                            }
                         } else {
                             database.updateDownloadStatus(download.request.id, null)
                         }

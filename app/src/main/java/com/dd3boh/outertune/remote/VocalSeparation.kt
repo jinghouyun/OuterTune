@@ -1,6 +1,10 @@
 package com.dd3boh.outertune.remote
 
 import android.content.Context
+import com.dd3boh.outertune.constants.VocalSeparatorApiUrlKey
+import com.dd3boh.outertune.utils.dataStore
+import com.dd3boh.outertune.utils.get
+import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -75,18 +79,76 @@ class VocalSeparationStore(private val context: Context) {
 }
 
 /**
- * Demo vocal separator. Submits a "job" and after a short delay marks it done
- * with placeholder URLs. Users can configure a real API endpoint in settings.
+ * Vocal separator. If the user has configured an API endpoint (VocalSeparatorApiUrlKey),
+ * submits a real separation job and polls for the result. Otherwise falls back to a demo
+ * mode that marks the job done with placeholder URLs after a short delay.
  */
 class VocalSeparator(private val context: Context) {
     private val store = VocalSeparationStore(context)
 
-    /** Submit a separation job. Returns the record immediately (status=processing). */
+    /** Submit a separation job. Returns the finished record (status=done/failed). */
     suspend fun submit(record: VocalSeparationRecord): VocalSeparationRecord {
         store.upsert(record.copy(status = "processing"))
-        // Demo mode: simulate completion after a delay.
-        kotlinx.coroutines.delay(3000)
-        val done = record.copy(
+
+        val apiUrl = context.dataStore.get(VocalSeparatorApiUrlKey, "").trim()
+        if (apiUrl.isEmpty()) {
+            return demoComplete(record)
+        }
+
+        return try {
+            val body = JSONObject().apply {
+                put("url", record.songId)
+                put("models", "vocals,instrumental")
+            }
+            val resp = RemoteHttp.postJson(apiUrl, body.toString())
+            val json = JSONObject(resp)
+
+            when {
+                json.has("vocals_url") && json.has("instrumental_url") -> {
+                    buildDone(record, json.getString("vocals_url"), json.getString("instrumental_url"))
+                }
+                json.optString("status") == "processing" && json.has("job_id") -> {
+                    pollUntilDone(apiUrl, record, json.getString("job_id"))
+                }
+                else -> demoComplete(record)
+            }
+        } catch (e: Exception) {
+            // request failed -> fall back to demo mode
+            demoComplete(record)
+        }
+    }
+
+    private suspend fun pollUntilDone(
+        apiUrl: String,
+        record: VocalSeparationRecord,
+        jobId: String,
+    ): VocalSeparationRecord {
+        repeat(40) { // ~2 minutes max
+            delay(3000)
+            try {
+                val resp = RemoteHttp.get("$apiUrl/status/$jobId")
+                val json = JSONObject(resp)
+                if (json.has("vocals_url") && json.has("instrumental_url")) {
+                    return buildDone(record, json.getString("vocals_url"), json.getString("instrumental_url"))
+                }
+            } catch (_: Exception) {
+                // keep polling
+            }
+        }
+        return record.copy(status = "failed").also { store.upsert(it) }
+    }
+
+    private fun buildDone(record: VocalSeparationRecord, vocal: String, instrumental: String): VocalSeparationRecord {
+        val done = record.copy(status = "done", vocalUrl = vocal, accompanimentUrl = instrumental)
+        store.upsert(done)
+        return done
+    }
+
+    private fun demoComplete(record: VocalSeparationRecord): VocalSeparationRecord {
+        // Demo mode: simulate completion after a short delay, placeholder urls.
+        var done = record.copy(status = "processing")
+        kotlinx.coroutines.runBlocking { delay(3000) }
+        done = done.copy(
             status = "done",
             vocalUrl = "vocal://${record.songId}",
             accompanimentUrl = "accompaniment://${record.songId}",

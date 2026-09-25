@@ -204,6 +204,11 @@ val DownloadLyricKey = booleanPreferencesKey("downloadLyric")
 val VocalSeparatorApiKey = stringPreferencesKey("vocalSeparatorApi")
 val VocalSeparatorApiUrlKey = stringPreferencesKey("vocalSeparatorApiUrl")
 
+/** List / home / window behaviour additions */
+val HomeHorizontalScrollKey = booleanPreferencesKey("homeHorizontalScroll")
+val ReserveStatusBarKey = booleanPreferencesKey("reserveStatusBar")
+val AudioReleaseOnFocusLossKey = booleanPreferencesKey("audioReleaseOnFocusLoss")
+
 /** Playback position persistence */
 val LastSongIdKey = stringPreferencesKey("lastSongId")
 val LastPositionKey = longPreferencesKey("lastPosition")
