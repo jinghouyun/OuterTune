@@ -18,12 +18,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.dd3boh.outertune.constants.TopBarInsets
 import com.dd3boh.outertune.remote.CustomSource
 import com.dd3boh.outertune.remote.CustomSourceStore
 import com.dd3boh.outertune.remote.RemoteHttp
+import com.dd3boh.outertune.remote.js.JsScriptStore
+import com.dd3boh.outertune.remote.js.ScriptHeader
 import com.dd3boh.outertune.ui.component.button.IconButton
 import com.dd3boh.outertune.ui.utils.backToMain
 import androidx.compose.ui.platform.LocalContext
@@ -36,12 +39,7 @@ import java.util.UUID
 
 /**
  * Parse an imported JSON config into a list of CustomSource (id auto-generated).
- * Handles common LX/OuterTune share formats:
- *   - { "sources": [ {name, url/baseUrl/api}, ... ] }
- *   - { "list": [ ... ] } / top-level array
- *   - single object {name, url/baseUrl/api/host/server}
- *   - nested under "config"/"api"/"server"
- * Returns only entries whose baseUrl resolves to a real host.
+ * Handles common LX/OuterTune share formats.
  */
 private fun parseImportedSources(json: String): List<CustomSource> {
     val out = mutableListOf<CustomSource>()
@@ -53,7 +51,6 @@ private fun parseImportedSources(json: String): List<CustomSource> {
             for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { roots.add(it) }
         } else {
             val obj = JSONObject(trimmed)
-            // unwrap common wrapper keys
             val root = when {
                 obj.optJSONObject("sources") != null -> obj
                 obj.optJSONObject("config") != null -> obj.optJSONObject("config")!!
@@ -89,14 +86,12 @@ private fun parseImportedSources(json: String): List<CustomSource> {
     return out
 }
 
-/** Pull a usable API base URL out of a source object, checking common field names. */
 private fun extractBaseUrl(o: JSONObject): String? {
     val fields = listOf("baseUrl", "api", "url", "host", "server", "serverUrl", "apiUrl", "endpoint")
     for (f in fields) {
         when (val v = o.opt(f)) {
             is String -> validHttpUrl(v)?.let { return it }
             is JSONObject -> {
-                // e.g. "url": {"base": "https://..."}
                 validHttpUrl(v.optString("base"))?.let { return it }
                 validHttpUrl(v.optString("url"))?.let { return it }
                 validHttpUrl(v.optString("host"))?.let { return it }
@@ -107,25 +102,17 @@ private fun extractBaseUrl(o: JSONObject): String? {
     return null
 }
 
-/**
- * Return [s] if it is a usable http(s) URL with a non-empty host, else null.
- * Rejects bare "https://" / "http://" and protocol-relative / host-less values.
- */
 private fun validHttpUrl(s: String?): String? {
     if (s.isNullOrBlank()) return null
     if (!s.startsWith("http://") && !s.startsWith("https://")) return null
-    val host = hostOf(s) ?: return null
-    return s
+    return s.takeIf { !hostOf(it).isNullOrBlank() }
 }
 
-/** Normalize: ensure trailing slash; caller already validated the host. */
-private fun normalizeBaseUrl(url: String): String {
-    return if (url.endsWith("/")) url else "$url/"
-}
+private fun normalizeBaseUrl(url: String): String =
+    if (url.endsWith("/")) url else "$url/"
 
 private fun hostOf(url: String): String? = runCatching {
-    val h = java.net.URL(url).host
-    h.takeIf { it.isNotBlank() }
+    java.net.URL(url).host.takeIf { it.isNotBlank() }
 }.getOrNull()
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,15 +124,19 @@ fun CustomSourceManagerScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { CustomSourceStore(context) }
+    val jsStore = remember { JsScriptStore(context) }
     var sources by remember { mutableStateOf(store.getAll()) }
+    var activeJsId by remember { mutableStateOf(store.activeJsId()) }
     var editing by remember { mutableStateOf<CustomSource?>(null) }
     var showForm by remember { mutableStateOf(false) }
     var showImportMenu by remember { mutableStateOf(false) }
     var showOnlineImport by remember { mutableStateOf(false) }
 
-    fun refresh() { sources = store.getAll() }
+    fun refresh() {
+        sources = store.getAll()
+        activeJsId = store.activeJsId()
+    }
 
-    /** Deduplicate against existing names, appending (2),(3)... */
     fun uniqueName(base: String): String {
         val existing = sources.map { it.name }.toMutableSet()
         var name = base
@@ -154,34 +145,41 @@ fun CustomSourceManagerScreen(
         return name
     }
 
-    /** Derive a friendly source name from a base URL (host, without www.). */
-    fun nameFromUrl(url: String): String {
-        return runCatching {
-            val u = java.net.URL(url)
-            val host = u.host.removePrefix("www.")
-            if (host.isBlank()) "自定义源" else host
-        }.getOrDefault("自定义源")
-    }
+    fun nameFromUrl(url: String): String = runCatching {
+        java.net.URL(url).host.removePrefix("www.").ifBlank { "自定义源" }
+    }.getOrDefault("自定义源")
 
-    /** Add the raw URL itself as a baseUrl source (LX Music compatible behaviour). */
     fun addUrlAsBaseSource(url: String): String {
         require(hostOf(url) != null) { "invalid url: $url" }
-        val normalized = normalizeBaseUrl(url)
         val name = uniqueName(nameFromUrl(url))
-        store.add(CustomSource(name = name, baseUrl = normalized))
+        store.add(CustomSource(name = name, baseUrl = normalizeBaseUrl(url)))
         refresh()
         return name
     }
 
-    /**
-     * Lenient online import, compatible with LX Music's behaviour:
-     *  1. GET the URL (UA, 30s). If it returns a JSON config with sources -> import them.
-     *  2. If JSON parsing yields no sources (or the response is HTML/JS/anything) -> treat the
-     *     URL itself as a baseUrl and add it.
-     *  3. If the network call fails -> still add the URL as a baseUrl (many APIs return 404
-     *     on GET / but serve /search fine).
-     *  Never rejects a URL outright.
-     */
+    /** Persist a JS script. Requires a valid leading `/* @name ... */` header block comment. */
+    fun addJsScriptSource(script: String, scriptUrl: String?): String? {
+        val header = ScriptHeader.parse(script) ?: return null
+        val id = UUID.randomUUID().toString()
+        jsStore.save(id, script)
+        val name = uniqueName(header.name.ifBlank { scriptUrl?.let { nameFromUrl(it) } ?: "JS音源" })
+        store.add(
+            CustomSource(
+                id = id,
+                name = name,
+                baseUrl = "",
+                enabled = true,
+                isJs = true,
+                scriptUrl = scriptUrl,
+                jsVersion = header.version.ifBlank { null },
+                jsAuthor = header.author.ifBlank { null },
+                jsHomepage = header.homepage.ifBlank { null },
+            )
+        )
+        refresh()
+        return name
+    }
+
     suspend fun importFromUrlLenient(raw: String): String {
         val target = raw.trim()
         if (!target.startsWith("http://") && !target.startsWith("https://")) {
@@ -191,45 +189,53 @@ fun CustomSourceManagerScreen(
         val body = try {
             RemoteHttp.getLongTimeout(target, ua)
         } catch (e: Exception) {
-            // Network/HTTP error: still add as a base source, per LX Music tolerance.
             val name = addUrlAsBaseSource(target)
-            return "无法访问(${e.message ?: "网络错误"})，仍已添加：$name，请到搜索页测试"
+            return "无法访问(${e.message ?: "网络错误"})，仍已添加：$name"
         }
 
-        // Try to interpret the body as a JSON config (formats A/B/C).
+        // A real lx-music JS script must start with a header block comment.
+        if (ScriptHeader.parse(body) != null) {
+            val name = runCatching { addJsScriptSource(body, target) }.getOrNull()
+                ?: return "JS 脚本保存失败"
+            return "已导入 JS 脚本源：$name"
+        }
+
         val parsed = runCatching { parseImportedSources(body) }.getOrDefault(emptyList())
         if (parsed.isNotEmpty()) {
             var count = 0
             parsed.forEach { s ->
-                runCatching {
-                    store.add(s.copy(name = uniqueName(s.name)))
-                    count++
-                }
+                runCatching { store.add(s.copy(name = uniqueName(s.name))); count++ }
             }
             refresh()
             return "成功导入 $count 个源"
         }
 
-        // No sources found in the body -> treat the URL itself as the API base URL.
         val name = addUrlAsBaseSource(target)
-        return "已添加源：$name，请到搜索页测试是否可用"
+        return "已添加源：$name"
     }
 
-    fun importJsonString(json: String) {
-        val parsed = runCatching { parseImportedSources(json) }.getOrDefault(emptyList())
-        if (parsed.isEmpty()) {
-            Toast.makeText(context, "导入失败：URL 无法访问或格式不正确", Toast.LENGTH_LONG).show()
-            return
-        }
-        var count = 0
-        parsed.forEach { s ->
-            runCatching {
-                store.add(s.copy(name = uniqueName(s.name)))
-                count++
+    fun importText(text: String) {
+        when {
+            ScriptHeader.parse(text) != null -> {
+                val name = runCatching { addJsScriptSource(text, null) }.getOrNull()
+                Toast.makeText(
+                    context,
+                    if (name != null) "已导入 JS 脚本源：$name" else "JS 脚本缺少 /* @name ... */ 头部注释，已拒绝",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            else -> {
+                val parsed = runCatching { parseImportedSources(text) }.getOrDefault(emptyList())
+                if (parsed.isEmpty()) {
+                    Toast.makeText(context, "导入失败：无法识别内容（JS 脚本需以 /* @name ... */ 开头）", Toast.LENGTH_LONG).show()
+                    return
+                }
+                var count = 0
+                parsed.forEach { s -> runCatching { store.add(s.copy(name = uniqueName(s.name))); count++ } }
+                refresh()
+                Toast.makeText(context, "成功导入 $count 个源", Toast.LENGTH_LONG).show()
             }
         }
-        refresh()
-        Toast.makeText(context, "成功导入 $count 个源", Toast.LENGTH_LONG).show()
     }
 
     val localImportLauncher = rememberLauncherForActivityResult(
@@ -244,9 +250,7 @@ fun CustomSourceManagerScreen(
             }
             if (text.isNullOrBlank()) {
                 Toast.makeText(context, "导入失败：无法读取文件", Toast.LENGTH_LONG).show()
-            } else {
-                importJsonString(text)
-            }
+            } else importText(text)
         }
     }
 
@@ -254,15 +258,10 @@ fun CustomSourceManagerScreen(
         SourceForm(
             existing = editing,
             onDismiss = { showForm = false; editing = null },
-            onSave = { src ->
-                store.add(src)
-                refresh()
-                showForm = false
-                editing = null
-                Toast.makeText(context, "已保存", Toast.LENGTH_SHORT).show()
-            },
+            onSave = { src -> store.add(src); refresh(); showForm = false; editing = null },
             onDelete = { src ->
                 store.remove(src.id)
+                if (src.isJs) jsStore.delete(src.id)
                 refresh()
                 showForm = false
                 editing = null
@@ -270,6 +269,9 @@ fun CustomSourceManagerScreen(
         )
         return
     }
+
+    val jsSources = sources.filter { it.isJs }
+    val restSources = sources.filter { !it.isJs }
 
     Scaffold(
         topBar = {
@@ -289,7 +291,7 @@ fun CustomSourceManagerScreen(
                     }
                     DropdownMenu(expanded = showImportMenu, onDismissRequest = { showImportMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("添加") },
+                            text = { Text("添加 REST 源") },
                             onClick = { showImportMenu = false; editing = null; showForm = true }
                         )
                         DropdownMenuItem(
@@ -297,10 +299,10 @@ fun CustomSourceManagerScreen(
                             onClick = { showImportMenu = false; showOnlineImport = true }
                         )
                         DropdownMenuItem(
-                            text = { Text("本地导入") },
+                            text = { Text("本地导入 (.js / .json)") },
                             onClick = {
                                 showImportMenu = false
-                                localImportLauncher.launch(arrayOf("application/json"))
+                                localImportLauncher.launch(arrayOf("application/json", "text/javascript", "text/plain", "application/octet-stream"))
                             }
                         )
                     }
@@ -310,55 +312,115 @@ fun CustomSourceManagerScreen(
             )
         }
     ) { padding ->
-        if (sources.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        LazyColumn(
+            Modifier.padding(padding).fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            // ---------------- JS script sources ----------------
+            item(key = "js_header") {
+                Text(
+                    "JS 脚本源（增强内置源播放/歌词/封面）",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            if (jsSources.isEmpty()) {
+                item(key = "js_empty") {
                     Text(
-                        "还没有自定义源",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "点击右上角 + 添加，或用更多菜单在线/本地导入",
+                        "尚未导入 JS 脚本。导入后选择一个启用，它会接管内置源的播放地址解析。",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
-                    Spacer(Modifier.height(16.dp))
-                    Row {
-                        OutlinedButton(onClick = { showOnlineImport = true }) { Text("在线导入") }
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedButton(onClick = { localImportLauncher.launch(arrayOf("application/json")) }) { Text("本地导入") }
+                }
+            }
+            items(jsSources, key = { "js_${it.id}" }) { src ->
+                val active = activeJsId == src.id
+                ElevatedCard(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        Modifier.padding(12.dp).fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = active,
+                            onClick = {
+                                store.setActiveJsId(if (active) null else src.id)
+                                refresh()
+                            }
+                        )
+                        Column(Modifier.weight(1f).clickable {
+                            store.setActiveJsId(if (active) null else src.id); refresh()
+                        }) {
+                            Text(src.name, style = MaterialTheme.typography.bodyLarge)
+                            val sub = listOfNotNull(
+                                src.jsVersion?.takeIf { it.isNotBlank() }?.let { "v$it" },
+                                src.jsAuthor?.takeIf { it.isNotBlank() }?.let { "by $it" }
+                            ).joinToString(" · ")
+                            if (sub.isNotBlank()) {
+                                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            }
+                            Text(
+                                if (active) "已启用" else "点按启用为增强脚本",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = {
+                            store.remove(src.id)
+                            jsStore.delete(src.id)
+                            refresh()
+                        }) {
+                            Icon(Icons.Rounded.Delete, "删除", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }
-        } else {
-            LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(vertical = 8.dp)) {
-                items(sources, key = { it.id }) { src ->
-                    ElevatedCard(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
-                            .clickable { editing = src; showForm = true }
+
+            // ---------------- REST custom sources ----------------
+            item(key = "rest_header") {
+                Text(
+                    "REST API 自定义源",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            if (restSources.isEmpty()) {
+                item(key = "rest_empty") {
+                    Text(
+                        "没有 REST 自定义源。用右上角 + 或更多菜单导入。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            items(restSources, key = { "rest_${it.id}" }) { src ->
+                ElevatedCard(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .clickable { editing = src; showForm = true }
+                ) {
+                    Row(
+                        Modifier.padding(16.dp).fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            Modifier
-                                .padding(16.dp)
-                                .fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(src.name, style = MaterialTheme.typography.bodyLarge)
-                                Text(src.baseUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                            }
-                            Switch(
-                                checked = src.enabled,
-                                onCheckedChange = {
-                                    store.update(src.copy(enabled = it))
-                                    refresh()
-                                }
-                            )
+                        Column(Modifier.weight(1f)) {
+                            Text(src.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(src.baseUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }
+                        Switch(
+                            checked = src.enabled,
+                            onCheckedChange = { store.update(src.copy(enabled = it)); refresh() }
+                        )
                     }
                 }
             }
@@ -375,8 +437,8 @@ fun CustomSourceManagerScreen(
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("配置 JSON 链接") },
-                    placeholder = { Text("https://xxx.com/api.json") },
+                    label = { Text("脚本 / 配置 URL") },
+                    placeholder = { Text("https://xxx.com/source.js") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -388,9 +450,7 @@ fun CustomSourceManagerScreen(
                         importing = true
                         val target = url.trim()
                         scope.launch {
-                            val msg = withContext(Dispatchers.IO) {
-                                importFromUrlLenient(target)
-                            }
+                            val msg = withContext(Dispatchers.IO) { importFromUrlLenient(target) }
                             showOnlineImport = false
                             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                         }
@@ -421,15 +481,10 @@ private fun SourceForm(
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text(if (existing == null) "添加自定义源" else "编辑自定义源") })
-        }
+        topBar = { TopAppBar(title = { Text(if (existing == null) "添加 REST 源" else "编辑 REST 源") }) }
     ) { padding ->
         Column(
-            Modifier
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp)
         ) {
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("源名称 *") }, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))

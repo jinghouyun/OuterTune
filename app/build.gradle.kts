@@ -241,6 +241,9 @@ dependencies {
 
     implementation(libs.okhttp)
 
+    // Rhino JS engine for user-imported custom source scripts
+    implementation(libs.rhino)
+
     implementation(libs.hilt)
     ksp(libs.hilt.compiler)
 

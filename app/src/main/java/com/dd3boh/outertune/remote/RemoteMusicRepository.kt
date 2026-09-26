@@ -15,6 +15,8 @@ import com.dd3boh.outertune.remote.sources.KwSource
 import com.dd3boh.outertune.remote.sources.MgSource
 import com.dd3boh.outertune.remote.sources.TxSource
 import com.dd3boh.outertune.remote.sources.WySource
+import com.dd3boh.outertune.remote.js.JsScriptStore
+import com.dd3boh.outertune.remote.js.LxScriptManager
 import com.dd3boh.outertune.utils.dataStore
 import com.dd3boh.outertune.utils.get
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -41,11 +43,68 @@ class RemoteMusicRepository @Inject constructor(
     private val builtInSources: List<RemoteMusicSource> = listOf(WySource, MgSource, TxSource, KgSource, KwSource)
 
     private val customStore = CustomSourceStore(context)
+    private val jsScriptStore = JsScriptStore(context)
 
-    /** All currently enabled sources: built-ins + user-defined custom sources. */
+    /**
+     * The active lx-music user-script engine. Scripts only enhance built-in sources
+     * (kw/kg/tx/wy/mg) for musicUrl / lyric / pic; they never provide search.
+     */
+    val jsManager = LxScriptManager(context)
+
+    private val builtinSourceIds = setOf("wy", "mg", "tx", "kg", "kw")
+
+    /**
+     * Cache of built custom-source instances keyed by CustomSource.id. Rhino scopes are expensive
+     * to compile, so we build each REST custom source once and reuse it.
+     */
+    private val customInstanceCache = HashMap<String, RemoteMusicSource>()
+
+    /** JS scripts are enhancement-only and are NOT registered as searchable sources. */
+    private fun buildCustomSource(src: CustomSource): RemoteMusicSource? {
+        if (src.isJs) return null
+        customInstanceCache[src.id]?.let { return it }
+        val instance = CustomSourceImpl(src)
+        customInstanceCache[src.id] = instance
+        return instance
+    }
+
+    /** Reload the JS engine if the active script selection changed since last use. */
+    private fun ensureJs() {
+        if (customStore.activeJsId() != jsManager.activeId) jsManager.reload()
+    }
+
+    /** Build an lx-music oldMusicInfo object to hand to the active JS script. */
+    private suspend fun lxMusicInfo(
+        mediaId: String,
+        sourceId: String,
+        sourceSongId: String,
+    ): Map<String, Any?> {
+        val dbSong = runCatching { database.song(mediaId).first() }.getOrNull()
+        val title = dbSong?.title ?: ""
+        val artists = dbSong?.artists?.joinToString("/") { it.name } ?: ""
+        val durationSec = dbSong?.song?.duration ?: 0
+        return buildMap {
+            put("name", title)
+            put("singer", artists)
+            put("source", sourceId)
+            put("songmid", sourceSongId)
+            if (sourceId == "kg") put("hash", sourceSongId)
+            dbSong?.album?.title?.let { put("albumName", it) }
+            if (durationSec > 0) put("interval", formatInterval(durationSec))
+            put("types", mapOf("128k" to emptyMap<String, Any?>(), "320k" to emptyMap(), "flac" to emptyMap()))
+        }
+    }
+
+    private fun formatInterval(sec: Int): String {
+        val m = sec / 60
+        val s = sec % 60
+        return "%02d:%02d".format(m, s)
+    }
+
+    /** All currently enabled sources: built-ins + user-defined custom sources (REST + JS). */
     private fun allSources(): List<RemoteMusicSource> {
         val customs = runCatching {
-            customStore.getEnabled().map { CustomSourceImpl(it) }
+            customStore.getEnabled().mapNotNull { buildCustomSource(it) }
         }.getOrDefault(emptyList())
         return builtInSources + customs
     }
@@ -108,10 +167,23 @@ class RemoteMusicRepository @Inject constructor(
     suspend fun resolveStreamUrl(mediaId: String, quality: String? = null): String? =
         withContext(Dispatchers.IO) {
             urlCache[mediaId]?.let { return@withContext it }
+            ensureJs()
             val parsed = parseMediaId(mediaId) ?: return@withContext null
             val (sourceId, sourceSongId) = parsed
             val source = sourceById(sourceId) ?: return@withContext null
             val q = quality ?: configuredQuality()
+
+            // 1) Active JS enhancement script wins for built-in sources (lx-music behavior).
+            if (sourceId in builtinSourceIds && jsManager.supports(sourceId, "musicUrl")) {
+                val jsUrl = runCatching {
+                    jsManager.tryMusicUrl(sourceId, q, lxMusicInfo(mediaId, sourceId, sourceSongId))
+                }.onFailure { Log.e("RemoteMusicRepo", "js musicUrl failed", it) }.getOrNull()
+                if (!jsUrl.isNullOrBlank()) {
+                    Log.i("RemoteMusicRepo", "JS script resolved url for $sourceId")
+                    urlCache[mediaId] = jsUrl
+                    return@withContext jsUrl
+                }
+            }
 
             val probeSong = RemoteSong(
                 id = mediaId, source = sourceId, sourceSongId = sourceSongId,
@@ -165,8 +237,18 @@ class RemoteMusicRepository @Inject constructor(
     }
 
     suspend fun getLyric(mediaId: String): RemoteLyric? = withContext(Dispatchers.IO) {
+        ensureJs()
         val parsed = parseMediaId(mediaId) ?: return@withContext null
         val (sourceId, sourceSongId) = parsed
+
+        // 1) Active JS enhancement script first.
+        if (sourceId in builtinSourceIds && jsManager.supports(sourceId, "lyric")) {
+            val jsLyric = runCatching {
+                jsManager.tryLyric(sourceId, lxMusicInfo(mediaId, sourceId, sourceSongId))
+            }.onFailure { Log.e("RemoteMusicRepo", "js lyric failed", it) }.getOrNull()
+            if (jsLyric != null) return@withContext applyS2T(jsLyric)
+        }
+
         val source = sourceById(sourceId) ?: return@withContext null
         val song = RemoteSong(
             id = mediaId, source = sourceId, sourceSongId = sourceSongId,
@@ -174,13 +256,17 @@ class RemoteMusicRepository @Inject constructor(
             durationSec = 0, thumbnailUrl = null,
         )
         val lyric = runCatching { source.getLyric(song) }.getOrNull() ?: return@withContext null
-        // Apply simplified-to-traditional conversion if enabled
+        applyS2T(lyric)
+    }
+
+    private fun applyS2T(lyric: RemoteLyric): RemoteLyric {
         if (context.dataStore[com.dd3boh.outertune.constants.S2TConvertKey] == true) {
-            lyric.copy(
+            return lyric.copy(
                 lyric = lyric.lyric?.let { com.dd3boh.outertune.utils.S2TConverter.convert(it) },
                 translated = lyric.translated?.let { com.dd3boh.outertune.utils.S2TConverter.convert(it) }
             )
-        } else lyric
+        }
+        return lyric
     }
 
     /**
@@ -189,13 +275,30 @@ class RemoteMusicRepository @Inject constructor(
      */
     suspend fun enrichCovers(songs: List<RemoteSong>): List<RemoteSong> =
         withContext(Dispatchers.IO) {
+            ensureJs()
             songs.map { song ->
                 if (song.thumbnailUrl != null) return@map song
                 val cover = when {
+                    song.source in builtinSourceIds && jsManager.supports(song.source, "pic") -> {
+                        runCatching {
+                            val info = buildMap {
+                                put("name", song.title)
+                                put("singer", song.artists.joinToString("/"))
+                                put("source", song.source)
+                                put("songmid", song.sourceSongId)
+                                if (song.source == "kg") put("hash", song.extra["hash"] ?: song.sourceSongId)
+                                song.albumName?.let { put("albumName", it) }
+                                song.extra.forEach { (k, v) -> put(k, v) }
+                            }
+                            jsManager.tryPic(song.source, info)
+                        }.getOrNull()
+                    }
                     song.source == "kw" -> fetchKwCover(song.sourceSongId)
                     song.source == "kg" -> fetchKgCover(song)
-                    song.source.startsWith("custom_") ->
-                        (sourceById(song.source) as? CustomSourceImpl)?.fetchCover(song.sourceSongId)
+                    song.source.startsWith("custom_") -> {
+                        val s = sourceById(song.source)
+                        if (s is CustomSourceImpl) s.fetchCover(song.sourceSongId) else null
+                    }
                     else -> null
                 }
                 if (cover != null) song.copy(thumbnailUrl = cover) else song
