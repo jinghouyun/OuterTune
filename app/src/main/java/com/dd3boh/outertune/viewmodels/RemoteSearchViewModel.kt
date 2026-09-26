@@ -1,13 +1,19 @@
 package com.dd3boh.outertune.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dd3boh.outertune.constants.SourceNameDisplayKey
 import com.dd3boh.outertune.db.MusicDatabase
 import com.dd3boh.outertune.db.entities.SearchHistory
 import com.dd3boh.outertune.playback.DownloadUtil
+import com.dd3boh.outertune.remote.CustomSourceStore
 import com.dd3boh.outertune.remote.RemoteMusicRepository
 import com.dd3boh.outertune.remote.RemoteSong
+import com.dd3boh.outertune.utils.dataStore
+import com.dd3boh.outertune.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,24 +24,31 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Which search backend the search screen is using. */
-enum class RemoteSourceTab(val sourceId: String?) {
-    LOCAL(null),
-    WY("wy"),
-    MG("mg"),
-    TX("tx"),
-    KG("kg"),
-    KW("kw");
-
+/** Which search backend the search screen is using. sourceId == null means local library. */
+data class RemoteSourceTab(val sourceId: String?, val label: String) {
     companion object {
-        val labels = mapOf(
-            LOCAL to "本地",
-            WY to "网易云音乐",
-            MG to "咪咕音乐",
-            TX to "QQ音乐",
-            KG to "酷狗音乐",
-            KW to "酷我音乐"
+        val LOCAL = RemoteSourceTab(null, "本地")
+
+        private val builtInOriginal = listOf(
+            "wy" to "网易云音乐",
+            "mg" to "咪咕音乐",
+            "tx" to "QQ音乐",
+            "kg" to "酷狗音乐",
+            "kw" to "酷我音乐",
         )
+        private val builtInAlias = listOf(
+            "wy" to "wy",
+            "mg" to "mg",
+            "tx" to "tx",
+            "kg" to "kg",
+            "kw" to "kw",
+        )
+
+        /** Built-in tabs, respecting the original/alias display preference. */
+        fun builtIn(alias: Boolean): List<RemoteSourceTab> {
+            val pairs = if (alias) builtInAlias else builtInOriginal
+            return listOf(LOCAL) + pairs.map { RemoteSourceTab(it.first, it.second) }
+        }
     }
 }
 
@@ -48,13 +61,33 @@ data class RemoteSearchUiState(
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class RemoteSearchViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val repository: RemoteMusicRepository,
     private val downloadUtil: DownloadUtil,
     private val database: MusicDatabase,
 ) : ViewModel() {
 
+    private val customStore = CustomSourceStore(context)
+
     val query = MutableStateFlow("")
     val sourceTab = MutableStateFlow(RemoteSourceTab.LOCAL)
+
+    /** All tabs: built-ins + enabled custom sources. Rebuilt by [refreshTabs]. */
+    val tabs = MutableStateFlow<List<RemoteSourceTab>>(buildTabs())
+
+    private fun buildTabs(): List<RemoteSourceTab> {
+        val alias = context.dataStore.get(SourceNameDisplayKey, "original") == "alias"
+        val built = RemoteSourceTab.builtIn(alias)
+        val customs = runCatching {
+            customStore.getEnabled().map { RemoteSourceTab("custom_${it.id}", it.name) }
+        }.getOrDefault(emptyList())
+        return built + customs
+    }
+
+    /** Call after custom sources are added/edited/deleted so tabs refresh. */
+    fun refreshTabs() {
+        tabs.value = buildTabs()
+    }
 
     private val _uiState = MutableStateFlow(RemoteSearchUiState())
     val uiState = _uiState.asStateFlow()
@@ -75,7 +108,7 @@ class RemoteSearchViewModel @Inject constructor(
         combine(query, sourceTab) { q, tab -> q to tab }
             .debounce(350L)
             .onEach { (q, tab) ->
-                if (tab == RemoteSourceTab.LOCAL || q.isBlank()) {
+                if (tab.sourceId == null || q.isBlank()) {
                     _uiState.value = RemoteSearchUiState()
                     return@onEach
                 }

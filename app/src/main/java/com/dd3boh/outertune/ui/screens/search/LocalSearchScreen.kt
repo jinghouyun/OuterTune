@@ -116,6 +116,7 @@ fun LocalSearchScreen(
     val result by viewModel.result.collectAsState()
 
     val remoteSourceTab by remoteViewModel.sourceTab.collectAsState()
+    val remoteTabs by remoteViewModel.tabs.collectAsState()
     val remoteUiState by remoteViewModel.uiState.collectAsState()
 
     val lazyListState = rememberLazyListState()
@@ -140,9 +141,9 @@ fun LocalSearchScreen(
         modifier = Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
     ) {
-        // Source selector: local library vs remote online sources
+        // Source selector: local library vs remote online sources (incl. custom)
         ChipsRow(
-            chips = RemoteSourceTab.entries.map { it to RemoteSourceTab.labels[it]!! },
+            chips = remoteTabs.map { it to it.label },
             currentValue = remoteSourceTab,
             onValueUpdate = { remoteViewModel.sourceTab.value = it },
             isLoading = { tab -> tab == remoteSourceTab && remoteUiState.loading }
@@ -192,7 +193,7 @@ fun LocalSearchScreen(
                             val startIndex = metadataList.indexOfFirst { it.id == song.id }
                             playerConnection.service.playQueue(
                                 RemoteQueue(
-                                    title = "${RemoteSourceTab.labels[remoteSourceTab]}: $query",
+                                    title = "${remoteSourceTab.label}: $query",
                                     items = metadataList,
                                     startIndex = startIndex.coerceAtLeast(0),
                                 )

@@ -209,6 +209,9 @@ val HomeHorizontalScrollKey = booleanPreferencesKey("homeHorizontalScroll")
 val ReserveStatusBarKey = booleanPreferencesKey("reserveStatusBar")
 val AudioReleaseOnFocusLossKey = booleanPreferencesKey("audioReleaseOnFocusLoss")
 
+/** Display source labels: "original" (网易云音乐) or "alias" (wy / custom name). */
+val SourceNameDisplayKey = stringPreferencesKey("sourceNameDisplay")
+
 /** Playback position persistence */
 val LastSongIdKey = stringPreferencesKey("lastSongId")
 val LastPositionKey = longPreferencesKey("lastPosition")

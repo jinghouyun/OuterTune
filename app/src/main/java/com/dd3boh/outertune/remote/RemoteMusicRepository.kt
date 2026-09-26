@@ -10,6 +10,7 @@ import com.dd3boh.outertune.constants.RemoteSourceTxEnabledKey
 import com.dd3boh.outertune.constants.RemoteSourceWyEnabledKey
 import com.dd3boh.outertune.db.MusicDatabase
 import com.dd3boh.outertune.remote.sources.KgSource
+import com.dd3boh.outertune.remote.sources.CustomSourceImpl
 import com.dd3boh.outertune.remote.sources.KwSource
 import com.dd3boh.outertune.remote.sources.MgSource
 import com.dd3boh.outertune.remote.sources.TxSource
@@ -37,14 +38,26 @@ class RemoteMusicRepository @Inject constructor(
     private val database: MusicDatabase,
 ) {
 
-    private val sources: List<RemoteMusicSource> = listOf(WySource, MgSource, TxSource, KgSource, KwSource)
-    private val sourceById: Map<String, RemoteMusicSource> = sources.associateBy { it.sourceId }
+    private val builtInSources: List<RemoteMusicSource> = listOf(WySource, MgSource, TxSource, KgSource, KwSource)
+
+    private val customStore = CustomSourceStore(context)
+
+    /** All currently enabled sources: built-ins + user-defined custom sources. */
+    private fun allSources(): List<RemoteMusicSource> {
+        val customs = runCatching {
+            customStore.getEnabled().map { CustomSourceImpl(it) }
+        }.getOrDefault(emptyList())
+        return builtInSources + customs
+    }
+
+    private fun sourceById(id: String): RemoteMusicSource? =
+        allSources().firstOrNull { it.sourceId == id }
 
     /** In-memory cache of resolved stream URLs keyed by outer tune mediaId. */
     private val urlCache = HashMap<String, String>()
 
     fun availableSources(): List<Pair<String, String>> =
-        sources.map { it.sourceId to it.displayName }
+        allSources().map { it.sourceId to it.displayName }
 
     /** Read the user-configured default quality. */
     private fun configuredQuality(): String =
@@ -66,7 +79,7 @@ class RemoteMusicRepository @Inject constructor(
     suspend fun search(sourceId: String, query: String, page: Int = 1, limit: Int = 30): List<RemoteSong> =
         withContext(Dispatchers.IO) {
             if (!isSourceEnabled(sourceId)) return@withContext emptyList()
-            val source = sourceById[sourceId] ?: return@withContext emptyList()
+            val source = sourceById(sourceId) ?: return@withContext emptyList()
             runCatching { source.search(query, page, limit) }
                 .onFailure { Log.e("RemoteMusicRepo", "search failed", it) }
                 .getOrDefault(emptyList())
@@ -81,7 +94,7 @@ class RemoteMusicRepository @Inject constructor(
             urlCache[mediaId]?.let { return@withContext it }
             val parsed = parseMediaId(mediaId) ?: return@withContext null
             val (sourceId, sourceSongId) = parsed
-            val source = sourceById[sourceId] ?: return@withContext null
+            val source = sourceById(sourceId) ?: return@withContext null
             val q = quality ?: configuredQuality()
 
             val probeSong = RemoteSong(
@@ -108,7 +121,7 @@ class RemoteMusicRepository @Inject constructor(
             val durationSec = dbSong.song.duration
 
             val candidates = mutableListOf<RemoteSong>()
-            for (other in sources) {
+            for (other in allSources()) {
                 if (other.sourceId == sourceId) continue
                 if (!isSourceEnabled(other.sourceId)) continue
                 runCatching {
@@ -119,7 +132,7 @@ class RemoteMusicRepository @Inject constructor(
             // try candidates in order
             for (cand in candidates.take(5)) {
                 val url = runCatching { cand.let { s ->
-                    sourceById[s.source]?.resolveStreamUrl(s, q)
+                    sourceById(s.source)?.resolveStreamUrl(s, q)
                 } }.getOrNull()
                 if (url != null) {
                     Log.i("RemoteMusicRepo", "fallback to ${cand.source} succeeded")
@@ -138,7 +151,7 @@ class RemoteMusicRepository @Inject constructor(
     suspend fun getLyric(mediaId: String): RemoteLyric? = withContext(Dispatchers.IO) {
         val parsed = parseMediaId(mediaId) ?: return@withContext null
         val (sourceId, sourceSongId) = parsed
-        val source = sourceById[sourceId] ?: return@withContext null
+        val source = sourceById(sourceId) ?: return@withContext null
         val song = RemoteSong(
             id = mediaId, source = sourceId, sourceSongId = sourceSongId,
             title = "", artists = emptyList(), albumName = null,
@@ -162,9 +175,11 @@ class RemoteMusicRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             songs.map { song ->
                 if (song.thumbnailUrl != null) return@map song
-                val cover = when (song.source) {
-                    "kw" -> fetchKwCover(song.sourceSongId)
-                    "kg" -> fetchKgCover(song)
+                val cover = when {
+                    song.source == "kw" -> fetchKwCover(song.sourceSongId)
+                    song.source == "kg" -> fetchKgCover(song)
+                    song.source.startsWith("custom_") ->
+                        (sourceById(song.source) as? CustomSourceImpl)?.fetchCover(song.sourceSongId)
                     else -> null
                 }
                 if (cover != null) song.copy(thumbnailUrl = cover) else song
@@ -203,16 +218,19 @@ class RemoteMusicRepository @Inject constructor(
 
     /**
      * Parse "NM<sourceId><sourceSongId>" -> (sourceId, sourceSongId).
-     * Source ids are wy/tx/kg/kw/mg (2 chars), so we split after "NM" + 2.
+     * Source ids are matched against all currently-known sources (built-in wy/mg/tx/kg/kw
+     * and dynamic "custom_<uuid>" ids). The longest matching known id wins.
      */
     private fun parseMediaId(mediaId: String): Pair<String, String>? {
         if (!mediaId.startsWith("NM")) return null
         val rest = mediaId.removePrefix("NM")
-        if (rest.length < 3) return null
-        val sourceId = rest.substring(0, 2)
-        val songId = rest.substring(2)
-        return if (sourceById.containsKey(sourceId) && songId.isNotEmpty()) {
-            sourceId to songId
-        } else null
+        // find the longest known sourceId that rest starts with
+        val known = allSources().map { it.sourceId }.sortedByDescending { it.length }
+        for (sid in known) {
+            if (rest.startsWith(sid) && rest.length > sid.length) {
+                return sid to rest.removePrefix(sid)
+            }
+        }
+        return null
     }
 }

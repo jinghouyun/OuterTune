@@ -54,6 +54,7 @@ import com.dd3boh.outertune.constants.ShowRomanizationKey
 import com.dd3boh.outertune.constants.ShowTranslationKey
 import com.dd3boh.outertune.constants.TopBarInsets
 import com.dd3boh.outertune.constants.VocalSeparatorApiUrlKey
+import com.dd3boh.outertune.constants.SourceNameDisplayKey
 import com.dd3boh.outertune.ui.component.ColumnWithContentPadding
 import com.dd3boh.outertune.ui.component.EditTextPreference
 import com.dd3boh.outertune.ui.component.ListPreference
@@ -83,6 +84,7 @@ fun RemoteSourceSettings(
     val (showRoma, onShowRoma) = rememberPreference(ShowRomanizationKey, false)
     val (s2t, onS2t) = rememberPreference(S2TConvertKey, false)
     val (vocalApiUrl, onVocalApiUrl) = rememberPreference(VocalSeparatorApiUrlKey, "")
+    val (sourceNameDisplay, onSourceNameDisplayChange) = rememberPreference(SourceNameDisplayKey, "original")
 
     ColumnWithContentPadding(
         modifier = Modifier.fillMaxHeight(),
@@ -117,6 +119,30 @@ fun RemoteSourceSettings(
             SwitchPreference("QQ音乐", Icons.Rounded.MusicNote, txEnabled, onTxChange)
             SwitchPreference("酷狗音乐", Icons.Rounded.MusicNote, kgEnabled, onKgChange)
             SwitchPreference("酷我音乐", Icons.Rounded.MusicNote, kwEnabled, onKwChange)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        PreferenceGroupTitle(title = "自定义源")
+        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            PreferenceEntry(
+                title = { Text("自定义源管理") },
+                description = "添加/编辑 LX Music 兼容的第三方源",
+                icon = { Icon(Icons.Rounded.Cloud, null) },
+                onClick = { navController.navigate("custom_source_manager") }
+            )
+            ListPreference(
+                title = { Text("歌曲来源名称显示") },
+                icon = { Icon(Icons.Rounded.Translate, null) },
+                selectedValue = sourceNameDisplay,
+                values = listOf("original", "alias"),
+                valueText = {
+                    when (it) {
+                        "alias" -> "别名 (wy/tx/自定义源名)"
+                        else -> "原名 (网易云音乐/QQ音乐…)"
+                    }
+                },
+                onValueSelected = onSourceNameDisplayChange
+            )
         }
         Spacer(modifier = Modifier.height(16.dp))
 

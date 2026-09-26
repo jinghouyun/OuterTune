@@ -181,6 +181,7 @@ import com.dd3boh.outertune.ui.screens.settings.AboutScreen
 import com.dd3boh.outertune.ui.screens.settings.AppearanceSettings
 import com.dd3boh.outertune.ui.screens.settings.AttributionScreen
 import com.dd3boh.outertune.ui.screens.settings.BackupAndRestore
+import com.dd3boh.outertune.ui.screens.settings.CustomSourceManagerScreen
 import com.dd3boh.outertune.ui.screens.settings.ExperimentalSettings
 import com.dd3boh.outertune.ui.screens.settings.InterfaceSettings
 import com.dd3boh.outertune.ui.screens.settings.LibrariesScreen
@@ -794,6 +795,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                     composable("vocal_separation") {
                                         VocalSeparationScreen(navController, scrollBehavior)
+                                    }
+                                    composable("custom_source_manager") {
+                                        CustomSourceManagerScreen(navController, scrollBehavior)
                                     }
                                     composable("rank") {
                                         RankScreen(navController, scrollBehavior)
