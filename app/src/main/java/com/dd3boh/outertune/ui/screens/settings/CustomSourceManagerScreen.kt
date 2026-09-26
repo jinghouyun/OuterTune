@@ -1,5 +1,8 @@
 package com.dd3boh.outertune.ui.screens.settings
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,10 +23,60 @@ import androidx.navigation.NavController
 import com.dd3boh.outertune.constants.TopBarInsets
 import com.dd3boh.outertune.remote.CustomSource
 import com.dd3boh.outertune.remote.CustomSourceStore
+import com.dd3boh.outertune.remote.RemoteHttp
 import com.dd3boh.outertune.ui.component.button.IconButton
 import com.dd3boh.outertune.ui.utils.backToMain
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.UUID
+
+/**
+ * Parse an imported JSON config into a list of CustomSource (id auto-generated).
+ * Supports: { "sources": [...] }, a top-level array, or a single {name, api/baseUrl/url}.
+ * Returns only entries with a resolvable baseUrl.
+ */
+private fun parseImportedSources(json: String): List<CustomSource> {
+    val out = mutableListOf<CustomSource>()
+    val roots = mutableListOf<JSONObject>()
+    runCatching {
+        val trimmed = json.trim()
+        if (trimmed.startsWith("[")) {
+            val arr = JSONArray(trimmed)
+            for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { roots.add(it) }
+        } else {
+            val obj = JSONObject(trimmed)
+            obj.optJSONArray("sources")?.let { arr ->
+                for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { roots.add(it) }
+            } ?: roots.add(obj)
+        }
+    }
+    roots.forEach { o ->
+        runCatching {
+            val baseUrl = o.optString("baseUrl").ifBlank {
+                o.optString("api").ifBlank { o.optString("url") }
+            }
+            if (baseUrl.isBlank()) return@runCatching
+            out.add(
+                CustomSource(
+                    id = UUID.randomUUID().toString(),
+                    name = o.optString("name").ifBlank { "未命名源" },
+                    baseUrl = baseUrl,
+                    searchPath = o.optString("searchPath", "/search").ifBlank { "/search" },
+                    urlPath = o.optString("urlPath", "/url").ifBlank { "/url" },
+                    lyricPath = o.optString("lyricPath", "/lyric").ifBlank { "/lyric" },
+                    picPath = o.optString("picPath", "/pic").ifBlank { "/pic" },
+                    separatePath = o.optString("separatePath", "/separate").ifBlank { "/separate" },
+                    enabled = o.optBoolean("enabled", true),
+                )
+            )
+        }
+    }
+    return out
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,10 +85,59 @@ fun CustomSourceManagerScreen(
     scrollBehavior: TopAppBarScrollBehavior,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val store = remember { CustomSourceStore(context) }
     var sources by remember { mutableStateOf(store.getAll()) }
     var editing by remember { mutableStateOf<CustomSource?>(null) }
     var showForm by remember { mutableStateOf(false) }
+    var showImportMenu by remember { mutableStateOf(false) }
+    var showOnlineImport by remember { mutableStateOf(false) }
+
+    fun refresh() { sources = store.getAll() }
+
+    /** Deduplicate against existing names, appending (2),(3)... */
+    fun uniqueName(base: String): String {
+        val existing = sources.map { it.name }.toMutableSet()
+        var name = base
+        var i = 2
+        while (name in existing) { name = "$base($i)"; i++ }
+        return name
+    }
+
+    fun importJsonString(json: String) {
+        val parsed = runCatching { parseImportedSources(json) }.getOrDefault(emptyList())
+        if (parsed.isEmpty()) {
+            Toast.makeText(context, "导入失败：URL 无法访问或格式不正确", Toast.LENGTH_LONG).show()
+            return
+        }
+        var count = 0
+        parsed.forEach { s ->
+            runCatching {
+                store.add(s.copy(name = uniqueName(s.name)))
+                count++
+            }
+        }
+        refresh()
+        Toast.makeText(context, "成功导入 $count 个源", Toast.LENGTH_LONG).show()
+    }
+
+    val localImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() }
+                }.getOrNull()
+            }
+            if (text.isNullOrBlank()) {
+                Toast.makeText(context, "导入失败：无法读取文件", Toast.LENGTH_LONG).show()
+            } else {
+                importJsonString(text)
+            }
+        }
+    }
 
     if (showForm) {
         SourceForm(
@@ -42,14 +145,14 @@ fun CustomSourceManagerScreen(
             onDismiss = { showForm = false; editing = null },
             onSave = { src ->
                 store.add(src)
-                sources = store.getAll()
+                refresh()
                 showForm = false
                 editing = null
                 Toast.makeText(context, "已保存", Toast.LENGTH_SHORT).show()
             },
             onDelete = { src ->
                 store.remove(src.id)
-                sources = store.getAll()
+                refresh()
                 showForm = false
                 editing = null
             }
@@ -70,6 +173,26 @@ fun CustomSourceManagerScreen(
                     IconButton(onClick = { editing = null; showForm = true }) {
                         Icon(Icons.Rounded.Add, "添加")
                     }
+                    IconButton(onClick = { showImportMenu = true }) {
+                        Icon(Icons.Rounded.MoreVert, "更多")
+                    }
+                    DropdownMenu(expanded = showImportMenu, onDismissRequest = { showImportMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("添加") },
+                            onClick = { showImportMenu = false; editing = null; showForm = true }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("在线导入") },
+                            onClick = { showImportMenu = false; showOnlineImport = true }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("本地导入") },
+                            onClick = {
+                                showImportMenu = false
+                                localImportLauncher.launch(arrayOf("application/json"))
+                            }
+                        )
+                    }
                 },
                 windowInsets = TopBarInsets,
                 scrollBehavior = scrollBehavior,
@@ -79,15 +202,28 @@ fun CustomSourceManagerScreen(
         if (sources.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Rounded.Add, null, modifier = Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(12.dp))
-                    Text("还没有自定义源，点击右上角添加", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "还没有自定义源",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "点击右上角 + 添加，或用更多菜单在线/本地导入",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row {
+                        OutlinedButton(onClick = { showOnlineImport = true }) { Text("在线导入") }
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(onClick = { localImportLauncher.launch(arrayOf("application/json")) }) { Text("本地导入") }
+                    }
                 }
             }
         } else {
             LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(vertical = 8.dp)) {
                 items(sources, key = { it.id }) { src ->
-                    var showMenu by remember { mutableStateOf(false) }
                     ElevatedCard(
                         Modifier
                             .fillMaxWidth()
@@ -108,27 +244,54 @@ fun CustomSourceManagerScreen(
                                 checked = src.enabled,
                                 onCheckedChange = {
                                     store.update(src.copy(enabled = it))
-                                    sources = store.getAll()
+                                    refresh()
                                 }
                             )
                         }
                     }
-                    if (showMenu) {
-                        AlertDialog(
-                            onDismissRequest = { showMenu = false },
-                            title = { Text(src.name) },
-                            text = { Text(src.baseUrl) },
-                            confirmButton = { TextButton(onClick = { showMenu = false; editing = src; showForm = true }) { Text("编辑") } },
-                            dismissButton = {
-                                TextButton(onClick = { showMenu = false; store.remove(src.id); sources = store.getAll() }) {
-                                    Text("删除", color = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        )
-                    }
                 }
             }
         }
+    }
+
+    if (showOnlineImport) {
+        var url by remember { mutableStateOf("") }
+        var importing by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { if (!importing) showOnlineImport = false },
+            title = { Text("在线导入") },
+            text = {
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("配置 JSON 链接") },
+                    placeholder = { Text("https://xxx.com/api.json") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !importing && url.isNotBlank(),
+                    onClick = {
+                        importing = true
+                        val target = url.trim()
+                        scope.launch {
+                            val body = withContext(Dispatchers.IO) {
+                                runCatching { RemoteHttp.get(target) }.getOrNull()
+                            }
+                            showOnlineImport = false
+                            if (body.isNullOrBlank()) {
+                                Toast.makeText(context, "导入失败：URL 无法访问或格式不正确", Toast.LENGTH_LONG).show()
+                            } else {
+                                importJsonString(body)
+                            }
+                        }
+                    }
+                ) { Text(if (importing) "导入中…" else "导入") }
+            },
+            dismissButton = { TextButton(onClick = { showOnlineImport = false }) { Text("取消") } }
+        )
     }
 }
 
