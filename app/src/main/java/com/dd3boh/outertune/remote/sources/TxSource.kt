@@ -52,7 +52,10 @@ object TxSource : RemoteMusicSource {
             if (json.optInt("code") != 0) return@runCatching emptyList()
             val req = json.optJSONObject("req") ?: return@runCatching emptyList()
             if (req.optInt("code") != 0) return@runCatching emptyList()
-            val items = req.optJSONObject("data")?.optJSONArray("item_song")
+            // Response shape: req.data.body.item_song (not req.data.item_song)
+            val body = req.optJSONObject("data") ?: return@runCatching emptyList()
+            val items = body.optJSONObject("body")?.optJSONArray("item_song")
+                ?: body.optJSONArray("item_song")
                 ?: return@runCatching emptyList()
             val out = ArrayList<RemoteSong>()
             for (i in 0 until items.length()) {

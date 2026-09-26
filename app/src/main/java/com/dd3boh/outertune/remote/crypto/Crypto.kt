@@ -45,15 +45,11 @@ object Crypto {
         return cipher.doFinal(data)
     }
 
-    /** AES-128-ECB, no padding (input must already be block aligned). */
+    /** AES-128-ECB with PKCS5/PKCS7 padding (matches NetEase eapi / lx-music). */
     fun aesEcbEncryptNoPadding(data: String, keyBytes: ByteArray): ByteArray {
-        val cipher = Cipher.getInstance("AES/ECB/NoPadding")
+        val cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")
         cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(keyBytes, "AES"))
-        // pad with zero bytes to 16-byte boundary
-        val padded = ByteArray(((data.length + 15) / 16) * 16)
-        val src = data.toByteArray(Charsets.UTF_8)
-        System.arraycopy(src, 0, padded, 0, src.size)
-        return cipher.doFinal(padded)
+        return cipher.doFinal(data.toByteArray(Charsets.UTF_8))
     }
 
     /**

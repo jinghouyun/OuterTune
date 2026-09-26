@@ -666,6 +666,16 @@ class MusicService : MediaLibraryService(),
             val mediaId = dataSpec.key ?: error("No media id")
             Log.d(TAG, "PLAYING: song id = $mediaId")
 
+            // Direct http(s) playback: e.g. vocal/accompaniment separation tracks are passed as
+            // bare URLs (mediaId == the URL itself, not an "NM..." id). Play the URI as-is
+            // without routing through the remote-source resolver.
+            if (!mediaId.startsWith("NM") &&
+                (dataSpec.uri.scheme.equals("http", true) || dataSpec.uri.scheme.equals("https", true))
+            ) {
+                Log.d(TAG, "PLAYING: direct http(s) url $mediaId")
+                return@Factory dataSpec
+            }
+
             var song = queueBoard.value.getCurrentQueue()?.findSong(dataSpec.key ?: "")
             if (song == null) { // in the case of resumption, queueBoard may not be ready yet
                 song = runBlocking { database.song(dataSpec.key).first()?.toMediaMetadata() }

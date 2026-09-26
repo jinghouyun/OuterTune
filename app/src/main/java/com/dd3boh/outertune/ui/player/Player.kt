@@ -848,8 +848,17 @@ fun ControlsContent(
 
             // Vocal separation track toggle (only shown if current song has a separation record)
             run {
-                val sepRecord = remember(mediaMetadata?.id) {
-                    mediaMetadata?.id?.let { com.dd3boh.outertune.remote.VocalSeparationStore(context).get(it) }
+                // Track the original NM mediaId. Switching to the vocal/accompaniment URL changes
+                // mediaMetadata.id, so we must NOT re-key off the live id or the button vanishes.
+                var baseSongId by remember { mutableStateOf<String?>(null) }
+                val currentMediaId = mediaMetadata?.id
+                LaunchedEffect(currentMediaId) {
+                    if (currentMediaId != null && currentMediaId.startsWith("NM")) {
+                        baseSongId = currentMediaId
+                    }
+                }
+                val sepRecord = remember(baseSongId) {
+                    baseSongId?.let { com.dd3boh.outertune.remote.VocalSeparationStore(context).get(it) }
                 }
                 var showTrackDialog by remember { mutableStateOf(false) }
                 var currentTrack by remember { mutableStateOf("original") }
@@ -875,26 +884,26 @@ fun ControlsContent(
                                                     val pos = playerConnection.player.currentPosition
                                                     when (mode) {
                                                         "vocal" -> {
-                                                            sepRecord.vocalUrl.takeIf { it.startsWith("vocal://") }?.let {
+                                                            sepRecord.vocalUrl.takeIf { it.isNotBlank() }?.let { url ->
                                                                 playerConnection.player.setMediaItem(
-                                                                    androidx.media3.common.MediaItem.fromUri(it), pos
+                                                                    androidx.media3.common.MediaItem.fromUri(url), pos
                                                                 )
                                                                 playerConnection.player.prepare()
                                                                 playerConnection.player.play()
                                                             }
                                                         }
                                                         "accompaniment" -> {
-                                                            sepRecord.accompanimentUrl.takeIf { it.startsWith("accompaniment://") }?.let {
+                                                            sepRecord.accompanimentUrl.takeIf { it.isNotBlank() }?.let { url ->
                                                                 playerConnection.player.setMediaItem(
-                                                                    androidx.media3.common.MediaItem.fromUri(it), pos
+                                                                    androidx.media3.common.MediaItem.fromUri(url), pos
                                                                 )
                                                                 playerConnection.player.prepare()
                                                                 playerConnection.player.play()
                                                             }
                                                         }
                                                         else -> {
-                                                            // restore original
-                                                            mediaMetadata?.id?.let { mid ->
+                                                            // restore original NM song
+                                                            baseSongId?.let { mid ->
                                                                 playerConnection.player.setMediaItem(
                                                                     androidx.media3.common.MediaItem.Builder().setMediaId(mid).setUri(mid).build(), pos
                                                                 )

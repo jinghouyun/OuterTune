@@ -193,6 +193,9 @@ class RemoteSearchViewModel @Inject constructor(
         downloadingIds.value = downloadingIds.value + song.id
         viewModelScope.launch {
             try {
+                // Make sure the song row exists first, otherwise updateDownloadStatus() (a bare
+                // UPDATE) affects 0 rows and the download never shows up in the downloaded list.
+                runCatching { database.insert(song.toMediaMetadata()) }
                 val url = repository.resolveStreamUrl(song.id)
                 if (url != null) {
                     downloadUtil.downloadRemote(song.toMediaMetadata(), url)

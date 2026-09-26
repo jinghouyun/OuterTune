@@ -17,9 +17,12 @@ object TxCrypto {
     )
 
     fun zzcSign(text: String): String {
-        val hash = Crypto.sha1Hex(text) // 40 lowercase hex chars
-        val part1 = PART_1_INDEXES.map { hash[it] }.joinToString("")
-        val part2 = PART_2_INDEXES.map { hash[it] }.joinToString("")
+        val hash = Crypto.sha1Hex(text) // 40 lowercase hex chars (valid indices 0..39)
+        // Guard against out-of-range indices: mirror JS behavior where hash[i] returns
+        // undefined (-> empty string) instead of throwing. Some reference tables index up to 40.
+        fun charAt(i: Int): String = if (i in hash.indices) hash[i].toString() else ""
+        val part1 = PART_1_INDEXES.map { charAt(it) }.joinToString("")
+        val part2 = PART_2_INDEXES.map { charAt(it) }.joinToString("")
         val xored = ByteArray(SCRAMBLE.size)
         for (i in SCRAMBLE.indices) {
             val hexPair = hash.substring(i * 2, i * 2 + 2)

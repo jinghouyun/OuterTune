@@ -71,9 +71,16 @@ class DownloadUtil @Inject constructor(
 ) {
     val TAG = DownloadUtil::class.simpleName.toString()
 
+    // Upstream factory that attaches a browser-like User-Agent (and Referer) so CDNs that
+    // validate request headers (netease/qq/migu) don't reject the download.
+    private val upstreamDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+        .setUserAgent("Mozilla/5.0 (Linux; Android 12; MI 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")
+        .setDefaultRequestProperties(mapOf("Referer" to "https://y.qq.com/"))
+        .let { androidx.media3.datasource.DefaultDataSource.Factory(context, it) }
     private val dataSourceFactory = ResolvingDataSource.Factory(
         CacheDataSource.Factory()
             .setCache(playerCache)
+            .setUpstreamDataSourceFactory(upstreamDataSourceFactory)
     ) { dataSpec ->
         dataSpec
     }
