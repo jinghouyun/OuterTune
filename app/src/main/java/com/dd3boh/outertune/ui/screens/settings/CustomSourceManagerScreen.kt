@@ -36,8 +36,12 @@ import java.util.UUID
 
 /**
  * Parse an imported JSON config into a list of CustomSource (id auto-generated).
- * Supports: { "sources": [...] }, a top-level array, or a single {name, api/baseUrl/url}.
- * Returns only entries with a resolvable baseUrl.
+ * Handles common LX/OuterTune share formats:
+ *   - { "sources": [ {name, url/baseUrl/api}, ... ] }
+ *   - { "list": [ ... ] } / top-level array
+ *   - single object {name, url/baseUrl/api/host/server}
+ *   - nested under "config"/"api"/"server"
+ * Returns only entries whose baseUrl resolves to a real host.
  */
 private fun parseImportedSources(json: String): List<CustomSource> {
     val out = mutableListOf<CustomSource>()
@@ -49,22 +53,29 @@ private fun parseImportedSources(json: String): List<CustomSource> {
             for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { roots.add(it) }
         } else {
             val obj = JSONObject(trimmed)
-            obj.optJSONArray("sources")?.let { arr ->
+            // unwrap common wrapper keys
+            val root = when {
+                obj.optJSONObject("sources") != null -> obj
+                obj.optJSONObject("config") != null -> obj.optJSONObject("config")!!
+                obj.optJSONObject("api") != null -> obj.optJSONObject("api")!!
+                obj.optJSONObject("server") != null -> obj.optJSONObject("server")!!
+                else -> obj
+            }
+            root.optJSONArray("sources")?.let { arr ->
                 for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { roots.add(it) }
-            } ?: roots.add(obj)
+            } ?: root.optJSONArray("list")?.let { arr ->
+                for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { roots.add(it) }
+            } ?: roots.add(root)
         }
     }
     roots.forEach { o ->
         runCatching {
-            val baseUrl = o.optString("baseUrl").ifBlank {
-                o.optString("api").ifBlank { o.optString("url") }
-            }
-            if (baseUrl.isBlank()) return@runCatching
+            val baseUrl = extractBaseUrl(o) ?: return@runCatching
             out.add(
                 CustomSource(
                     id = UUID.randomUUID().toString(),
-                    name = o.optString("name").ifBlank { "未命名源" },
-                    baseUrl = baseUrl,
+                    name = o.optString("name").ifBlank { hostOf(baseUrl) ?: "未命名源" },
+                    baseUrl = normalizeBaseUrl(baseUrl),
                     searchPath = o.optString("searchPath", "/search").ifBlank { "/search" },
                     urlPath = o.optString("urlPath", "/url").ifBlank { "/url" },
                     lyricPath = o.optString("lyricPath", "/lyric").ifBlank { "/lyric" },
@@ -77,6 +88,39 @@ private fun parseImportedSources(json: String): List<CustomSource> {
     }
     return out
 }
+
+/** Pull a usable API base URL out of a source object, checking common field names. */
+private fun extractBaseUrl(o: JSONObject): String? {
+    val fields = listOf("baseUrl", "api", "url", "host", "server", "serverUrl", "apiUrl", "endpoint")
+    for (f in fields) {
+        v0@ when (val v = o.opt(f)) {
+            is String -> if (v.isNotBlank() && looksLikeHttpUrl(v)) return v
+            is JSONObject -> {
+                // e.g. "url": {"base": "https://..."}
+                v.optString("base").takeIf { it.isNotBlank() && looksLikeHttpUrl(it) }?.let { return it }
+                v.optString("url").takeIf { it.isNotBlank() && looksLikeHttpUrl(it) }?.let { return it }
+            }
+            else -> {}
+        }
+    }
+    return null
+}
+
+private fun looksLikeHttpUrl(s: String): Boolean =
+    s.startsWith("http://") || s.startsWith("https://")
+
+/** Normalize: ensure trailing slash; reject URLs with an empty host. */
+private fun normalizeBaseUrl(url: String): String {
+    val withSlash = if (url.endsWith("/")) url else "$url/"
+    // reject obviously broken hosts
+    hostOf(withSlash) ?: return url
+    return withSlash
+}
+
+private fun hostOf(url: String): String? = runCatching {
+    val h = java.net.URL(url).host
+    h.takeIf { it.isNotBlank() }
+}.getOrNull()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,7 +159,8 @@ fun CustomSourceManagerScreen(
 
     /** Add the raw URL itself as a baseUrl source (LX Music compatible behaviour). */
     fun addUrlAsBaseSource(url: String): String {
-        val normalized = if (url.endsWith("/")) url else "$url/"
+        require(hostOf(url) != null) { "invalid url: $url" }
+        val normalized = normalizeBaseUrl(url)
         val name = uniqueName(nameFromUrl(url))
         store.add(CustomSource(name = name, baseUrl = normalized))
         refresh()

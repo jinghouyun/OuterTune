@@ -34,7 +34,8 @@ object MgSource : RemoteMusicSource {
     override fun search(query: String, page: Int, limit: Int): List<RemoteSong> {
         val time = System.currentTimeMillis().toString()
         val sign = Crypto.md5Hex("$query$SIGN_SECRET$SIGN_SUFFIX$DEVICE_ID$time")
-        val searchSwitch = """{"song":1,"album":0,"singer":0,"songlist":0}"""
+        // searchSwitch mirrors lx-music-mobile exactly
+        val searchSwitch = """{"song":1,"album":0,"singer":0,"tagSong":1,"mvSong":0,"bestShow":1,"songlist":0,"lyricSong":0}"""
         val url =
             "https://jadeite.migu.cn/music_search/v3/search/searchAll" +
                 "?isCorrect=0&isCopyright=1" +
