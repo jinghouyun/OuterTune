@@ -104,6 +104,66 @@ fun CustomSourceManagerScreen(
         return name
     }
 
+    /** Derive a friendly source name from a base URL (host, without www.). */
+    fun nameFromUrl(url: String): String {
+        return runCatching {
+            val u = java.net.URL(url)
+            val host = u.host.removePrefix("www.")
+            if (host.isBlank()) "自定义源" else host
+        }.getOrDefault("自定义源")
+    }
+
+    /** Add the raw URL itself as a baseUrl source (LX Music compatible behaviour). */
+    fun addUrlAsBaseSource(url: String): String {
+        val normalized = if (url.endsWith("/")) url else "$url/"
+        val name = uniqueName(nameFromUrl(url))
+        store.add(CustomSource(name = name, baseUrl = normalized))
+        refresh()
+        return name
+    }
+
+    /**
+     * Lenient online import, compatible with LX Music's behaviour:
+     *  1. GET the URL (UA, 30s). If it returns a JSON config with sources -> import them.
+     *  2. If JSON parsing yields no sources (or the response is HTML/JS/anything) -> treat the
+     *     URL itself as a baseUrl and add it.
+     *  3. If the network call fails -> still add the URL as a baseUrl (many APIs return 404
+     *     on GET / but serve /search fine).
+     *  Never rejects a URL outright.
+     */
+    suspend fun importFromUrlLenient(raw: String): String {
+        val target = raw.trim()
+        if (!target.startsWith("http://") && !target.startsWith("https://")) {
+            return "URL 必须以 http:// 或 https:// 开头"
+        }
+        val ua = mapOf("User-Agent" to "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36")
+        val body = try {
+            RemoteHttp.getLongTimeout(target, ua)
+        } catch (e: Exception) {
+            // Network/HTTP error: still add as a base source, per LX Music tolerance.
+            val name = addUrlAsBaseSource(target)
+            return "无法访问(${e.message ?: "网络错误"})，仍已添加：$name，请到搜索页测试"
+        }
+
+        // Try to interpret the body as a JSON config (formats A/B/C).
+        val parsed = runCatching { parseImportedSources(body) }.getOrDefault(emptyList())
+        if (parsed.isNotEmpty()) {
+            var count = 0
+            parsed.forEach { s ->
+                runCatching {
+                    store.add(s.copy(name = uniqueName(s.name)))
+                    count++
+                }
+            }
+            refresh()
+            return "成功导入 $count 个源"
+        }
+
+        // No sources found in the body -> treat the URL itself as the API base URL.
+        val name = addUrlAsBaseSource(target)
+        return "已添加源：$name，请到搜索页测试是否可用"
+    }
+
     fun importJsonString(json: String) {
         val parsed = runCatching { parseImportedSources(json) }.getOrDefault(emptyList())
         if (parsed.isEmpty()) {
@@ -277,15 +337,11 @@ fun CustomSourceManagerScreen(
                         importing = true
                         val target = url.trim()
                         scope.launch {
-                            val body = withContext(Dispatchers.IO) {
-                                runCatching { RemoteHttp.get(target) }.getOrNull()
+                            val msg = withContext(Dispatchers.IO) {
+                                importFromUrlLenient(target)
                             }
                             showOnlineImport = false
-                            if (body.isNullOrBlank()) {
-                                Toast.makeText(context, "导入失败：URL 无法访问或格式不正确", Toast.LENGTH_LONG).show()
-                            } else {
-                                importJsonString(body)
-                            }
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                         }
                     }
                 ) { Text(if (importing) "导入中…" else "导入") }

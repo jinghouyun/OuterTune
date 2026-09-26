@@ -20,6 +20,13 @@ object RemoteHttp {
         .retryOnConnectionFailure(true)
         .build()
 
+    /** Longer-timeout client for slow/overseas endpoints (e.g. custom-source config fetch). */
+    private val longTimeoutClient: OkHttpClient = client.newBuilder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+
     private val FORM = "application/x-www-form-urlencoded".toMediaType()
     private val JSON = "application/json; charset=utf-8".toMediaType()
 
@@ -30,6 +37,19 @@ object RemoteHttp {
         val builder = Request.Builder().url(url).get()
         headers.forEach { (k, v) -> builder.header(k, v) }
         client.newCall(builder.build()).execute().use { resp ->
+            return resp.body?.string().orEmpty()
+        }
+    }
+
+    /** GET with a 30s timeout; throws on network/HTTP errors so callers can classify. */
+    fun getLongTimeout(
+        url: String,
+        headers: Map<String, String> = emptyMap(),
+    ): String {
+        val builder = Request.Builder().url(url).get()
+        headers.forEach { (k, v) -> builder.header(k, v) }
+        longTimeoutClient.newCall(builder.build()).execute().use { resp ->
+            if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code}")
             return resp.body?.string().orEmpty()
         }
     }
