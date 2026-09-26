@@ -48,6 +48,10 @@ interface RemoteMusicSource {
     val sourceId: String
     val displayName: String
 
+    /** Whether this source provides a vocal-separation endpoint. Built-ins do not. */
+    val supportsSeparation: Boolean
+        get() = false
+
     fun search(query: String, page: Int = 1, limit: Int = 30): List<RemoteSong>
 
     /** Resolve a playable direct stream URL for [song]. Returns null if unavailable. */

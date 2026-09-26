@@ -16,6 +16,13 @@ class CustomSourceImpl(val source: CustomSource) : RemoteMusicSource {
 
     override val sourceId: String = "custom_${source.id}"
     override val displayName: String = source.name
+    override val supportsSeparation: Boolean = true
+
+    /** Full URL for submitting a vocal-separation job. */
+    fun separateEndpoint(): String = url(source.separatePath)
+
+    /** Full URL for polling a separation job status. */
+    fun separateStatusEndpoint(jobId: String): String = url(source.separatePath) + "/status/$jobId"
 
     private fun url(path: String): String {
         val base = source.baseUrl.trimEnd('/')

@@ -146,6 +146,7 @@ private fun SourceForm(
     var urlPath by remember { mutableStateOf(existing?.urlPath ?: "/url") }
     var lyricPath by remember { mutableStateOf(existing?.lyricPath ?: "/lyric") }
     var picPath by remember { mutableStateOf(existing?.picPath ?: "/pic") }
+    var separatePath by remember { mutableStateOf(existing?.separatePath ?: "/separate") }
     var enabled by remember { mutableStateOf(existing?.enabled ?: true) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -172,6 +173,8 @@ private fun SourceForm(
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(value = picPath, onValueChange = { picPath = it }, label = { Text("封面接口路径") }, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
+            OutlinedTextField(value = separatePath, onValueChange = { separatePath = it }, label = { Text("人声分离接口路径（可选）") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("启用", modifier = Modifier.weight(1f))
                 Switch(checked = enabled, onCheckedChange = { enabled = it })
@@ -183,7 +186,8 @@ private fun SourceForm(
                     onSave((existing ?: CustomSource(name = name, baseUrl = baseUrl)).copy(
                         name = name, baseUrl = baseUrl, searchPath = searchPath.ifBlank { "/search" },
                         urlPath = urlPath.ifBlank { "/url" }, lyricPath = lyricPath.ifBlank { "/lyric" },
-                        picPath = picPath.ifBlank { "/pic" }, enabled = enabled
+                        picPath = picPath.ifBlank { "/pic" }, separatePath = separatePath.ifBlank { "/separate" },
+                        enabled = enabled
                     ))
                 },
                 modifier = Modifier.fillMaxWidth()

@@ -511,6 +511,13 @@ private fun RemoteSongRow(
                     }
                     append(" · ")
                     append(makeTimeString(song.durationSec * 1000L))
+                    val src = com.dd3boh.outertune.remote.SourceLabel.name(
+                        androidx.compose.ui.platform.LocalContext.current, song.source
+                    )
+                    if (src.isNotBlank()) {
+                        append(" · ")
+                        append(src)
+                    }
                 },
                 color = MaterialTheme.colorScheme.secondary,
                 style = MaterialTheme.typography.bodySmall,

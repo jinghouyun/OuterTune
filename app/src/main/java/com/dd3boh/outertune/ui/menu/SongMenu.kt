@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -86,6 +87,7 @@ fun SongMenu(
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val database = LocalDatabase.current
+    val remoteRepository = remember { com.dd3boh.outertune.remote.RemoteMusicRepository(context, database) }
     val density = LocalDensity.current
     val downloadUtil = LocalDownloadUtil.current
     val clipboardManager = LocalClipboard.current
@@ -246,6 +248,11 @@ fun SongMenu(
             icon = Icons.Rounded.Mic,
             title = R.string.vocal_separation
         ) {
+            if (!remoteRepository.supportsSeparation(song.id)) {
+                Toast.makeText(context, "该音源不支持人声分离，请使用自定义源", Toast.LENGTH_LONG).show()
+                onDismiss()
+                return@GridMenuItem
+            }
             val rec = com.dd3boh.outertune.remote.VocalSeparationRecord(
                 songId = song.id,
                 title = song.title,
@@ -256,7 +263,7 @@ fun SongMenu(
             com.dd3boh.outertune.remote.VocalSeparationStore(context).upsert(rec)
             scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching {
-                    com.dd3boh.outertune.remote.VocalSeparator(context).submit(rec)
+                    com.dd3boh.outertune.remote.VocalSeparator(context, remoteRepository).submit(rec)
                 }
             }
             Toast.makeText(context, "已提交分离任务，请在人声分离列表查看", Toast.LENGTH_SHORT).show()

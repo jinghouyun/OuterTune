@@ -201,7 +201,6 @@ val DownloadQualityKey = stringPreferencesKey("downloadQuality")
 val DownloadConcurrentKey = intPreferencesKey("downloadConcurrent")
 val DownloadNotifyKey = booleanPreferencesKey("downloadNotify")
 val DownloadLyricKey = booleanPreferencesKey("downloadLyric")
-val VocalSeparatorApiKey = stringPreferencesKey("vocalSeparatorApi")
 val VocalSeparatorApiUrlKey = stringPreferencesKey("vocalSeparatorApiUrl")
 
 /** List / home / window behaviour additions */

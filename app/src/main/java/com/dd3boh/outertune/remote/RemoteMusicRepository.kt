@@ -59,6 +59,22 @@ class RemoteMusicRepository @Inject constructor(
     fun availableSources(): List<Pair<String, String>> =
         allSources().map { it.sourceId to it.displayName }
 
+    /** All enabled source ids (built-in enabled + enabled custom sources). */
+    fun enabledSourceIds(): List<String> =
+        allSources().filter { isSourceEnabled(it.sourceId) }.map { it.sourceId }
+
+    /** Public lookup for a source by id (may be a custom source). */
+    fun sourceByIdPublic(id: String): RemoteMusicSource? = sourceById(id)
+
+    /** Parse a mediaId's sourceId, or null. */
+    fun parseSourceId(mediaId: String): String? = parseMediaId(mediaId)?.first
+
+    /** Whether the source backing this mediaId supports vocal separation. */
+    fun supportsSeparation(mediaId: String): Boolean {
+        val sid = parseSourceId(mediaId) ?: return false
+        return sourceById(sid)?.supportsSeparation == true
+    }
+
     /** Read the user-configured default quality. */
     private fun configuredQuality(): String =
         context.dataStore[RemoteSourceQualityKey] ?: "128k"

@@ -14,7 +14,11 @@ import com.dd3boh.outertune.utils.dataStore
 import com.dd3boh.outertune.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,6 +32,8 @@ import javax.inject.Inject
 data class RemoteSourceTab(val sourceId: String?, val label: String) {
     companion object {
         val LOCAL = RemoteSourceTab(null, "本地")
+        /** Aggregate search across all enabled sources. */
+        val ALL = RemoteSourceTab("all", "全部")
 
         private val builtInOriginal = listOf(
             "wy" to "网易云音乐",
@@ -47,7 +53,7 @@ data class RemoteSourceTab(val sourceId: String?, val label: String) {
         /** Built-in tabs, respecting the original/alias display preference. */
         fun builtIn(alias: Boolean): List<RemoteSourceTab> {
             val pairs = if (alias) builtInAlias else builtInOriginal
-            return listOf(LOCAL) + pairs.map { RemoteSourceTab(it.first, it.second) }
+            return listOf(LOCAL, ALL) + pairs.map { RemoteSourceTab(it.first, it.second) }
         }
     }
 }
@@ -119,12 +125,43 @@ class RemoteSearchViewModel @Inject constructor(
                     }
                     refreshHistory()
                 }
+                if (tab.sourceId == "all") {
+                    searchAll(q)
+                    return@onEach
+                }
                 _uiState.value = RemoteSearchUiState(loading = true)
                 val results = repository.search(tab.sourceId!!, q, page = 1, limit = 30)
                 val withCovers = repository.enrichCovers(results)
                 _uiState.value = RemoteSearchUiState(songs = withCovers)
             }
             .launchIn(viewModelScope)
+    }
+
+    /**
+     * Aggregate search: concurrently query every enabled source and append results
+     * incrementally as each source returns. Failing sources are skipped silently.
+     */
+    private fun searchAll(q: String) {
+        _uiState.value = RemoteSearchUiState(loading = true)
+        val accum = mutableListOf<RemoteSong>()
+        viewModelScope.launch {
+            val ids: List<String> = runCatching { repository.enabledSourceIds() }.getOrDefault(emptyList())
+            coroutineScope {
+                ids.map { sid ->
+                    async(Dispatchers.IO) {
+                        runCatching {
+                            val res = repository.search(sid, q, page = 1, limit = 30)
+                            if (res.isNotEmpty()) {
+                                val enriched = repository.enrichCovers(res)
+                                synchronized(accum) { accum.addAll(enriched) }
+                                _uiState.value = _uiState.value.copy(songs = accum.toList())
+                            }
+                        }
+                    }
+                }.awaitAll()
+            }
+            _uiState.value = _uiState.value.copy(loading = false)
+        }
     }
 
     private fun refreshHistory() {

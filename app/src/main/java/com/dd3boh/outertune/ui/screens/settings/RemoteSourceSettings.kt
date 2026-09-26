@@ -53,7 +53,6 @@ import com.dd3boh.outertune.constants.S2TConvertKey
 import com.dd3boh.outertune.constants.ShowRomanizationKey
 import com.dd3boh.outertune.constants.ShowTranslationKey
 import com.dd3boh.outertune.constants.TopBarInsets
-import com.dd3boh.outertune.constants.VocalSeparatorApiUrlKey
 import com.dd3boh.outertune.constants.SourceNameDisplayKey
 import com.dd3boh.outertune.ui.component.ColumnWithContentPadding
 import com.dd3boh.outertune.ui.component.EditTextPreference
@@ -83,7 +82,6 @@ fun RemoteSourceSettings(
     val (showTrans, onShowTrans) = rememberPreference(ShowTranslationKey, true)
     val (showRoma, onShowRoma) = rememberPreference(ShowRomanizationKey, false)
     val (s2t, onS2t) = rememberPreference(S2TConvertKey, false)
-    val (vocalApiUrl, onVocalApiUrl) = rememberPreference(VocalSeparatorApiUrlKey, "")
     val (sourceNameDisplay, onSourceNameDisplayChange) = rememberPreference(SourceNameDisplayKey, "original")
 
     ColumnWithContentPadding(
@@ -165,15 +163,9 @@ fun RemoteSourceSettings(
 
         PreferenceGroupTitle(title = "人声分离")
         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-            EditTextPreference(
-                title = { Text("分离 API 地址") },
-                icon = { Icon(Icons.Rounded.Mic, null) },
-                value = vocalApiUrl,
-                onValueChange = onVocalApiUrl,
-            )
             PreferenceEntry(
                 title = { Text("人声分离列表") },
-                description = "查看和管理已分离的歌曲",
+                description = "查看和管理已分离的歌曲（仅自定义源支持）",
                 icon = { Icon(Icons.Rounded.Mic, null) },
                 onClick = { navController.navigate("vocal_separation") }
             )

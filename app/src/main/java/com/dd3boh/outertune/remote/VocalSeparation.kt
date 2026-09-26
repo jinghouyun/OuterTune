@@ -1,16 +1,15 @@
 package com.dd3boh.outertune.remote
 
 import android.content.Context
-import com.dd3boh.outertune.constants.VocalSeparatorApiUrlKey
-import com.dd3boh.outertune.utils.dataStore
-import com.dd3boh.outertune.utils.get
+import com.dd3boh.outertune.remote.sources.CustomSourceImpl
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
  * A vocal separation record. Status: processing / done / failed.
- * vocalUrl/accompanimentUrl are file paths or URLs; empty while processing.
+ * vocalUrl/accompanimentUrl are URLs; empty while processing.
+ * note carries a human-readable failure reason.
  */
 data class VocalSeparationRecord(
     val songId: String,
@@ -20,12 +19,12 @@ data class VocalSeparationRecord(
     val status: String = "processing", // processing / done / failed
     val vocalUrl: String = "",
     val accompanimentUrl: String = "",
+    val note: String = "",
     val createTime: Long = System.currentTimeMillis(),
 )
 
 /**
  * Stores vocal separation records in SharedPreferences as JSON.
- * Avoids Room migration for this optional feature.
  */
 class VocalSeparationStore(private val context: Context) {
     private val prefs = context.getSharedPreferences("vocal_separation", Context.MODE_PRIVATE)
@@ -43,6 +42,7 @@ class VocalSeparationStore(private val context: Context) {
                 status = o.optString("status", "processing"),
                 vocalUrl = o.optString("vocalUrl", ""),
                 accompanimentUrl = o.optString("accompanimentUrl", ""),
+                note = o.optString("note", ""),
                 createTime = o.optLong("createTime", 0),
             )
         }.sortedByDescending { it.createTime }
@@ -71,6 +71,7 @@ class VocalSeparationStore(private val context: Context) {
                 put("status", r.status)
                 put("vocalUrl", r.vocalUrl)
                 put("accompanimentUrl", r.accompanimentUrl)
+                put("note", r.note)
                 put("createTime", r.createTime)
             })
         }
@@ -79,54 +80,60 @@ class VocalSeparationStore(private val context: Context) {
 }
 
 /**
- * Vocal separator. If the user has configured an API endpoint (VocalSeparatorApiUrlKey),
- * submits a real separation job and polls for the result. Otherwise falls back to a demo
- * mode that marks the job done with placeholder URLs after a short delay.
+ * Vocal separator that follows the song's own source. Built-in sources (wy/mg/tx/kg/kw)
+ * do not support separation; only custom sources expose a /separate endpoint.
  */
-class VocalSeparator(private val context: Context) {
+class VocalSeparator(
+    @Suppress("UNUSED_PARAMETER") private val context: Context,
+    private val repository: RemoteMusicRepository,
+) {
     private val store = VocalSeparationStore(context)
 
-    /** Submit a separation job. Returns the finished record (status=done/failed). */
+    /** Submit a separation job for the song identified by [record.songId] (a mediaId). */
     suspend fun submit(record: VocalSeparationRecord): VocalSeparationRecord {
-        store.upsert(record.copy(status = "processing"))
+        store.upsert(record.copy(status = "processing", note = ""))
 
-        val apiUrl = context.dataStore.get(VocalSeparatorApiUrlKey, "").trim()
-        if (apiUrl.isEmpty()) {
-            return demoComplete(record)
+        // 1. resolve which source this song belongs to
+        val source = repository.parseSourceId(record.songId)?.let { repository.sourceByIdPublic(it) }
+        if (source !is CustomSourceImpl || !source.supportsSeparation) {
+            return fail(record, "该音源不支持人声分离，请使用自定义源")
         }
 
+        // 2. resolve the real playable stream url
+        val streamUrl = runCatching { repository.resolveStreamUrl(record.songId) }.getOrNull()
+        if (streamUrl.isNullOrBlank()) {
+            return fail(record, "无法获取播放地址，请先播放该歌曲")
+        }
+
+        // 3. submit the separation job to the custom source
         return try {
             val body = JSONObject().apply {
-                put("url", record.songId)
+                put("url", streamUrl)
                 put("models", "vocals,instrumental")
             }
-            val resp = RemoteHttp.postJson(apiUrl, body.toString())
+            val resp = RemoteHttp.postJson(source.separateEndpoint(), body.toString())
             val json = JSONObject(resp)
-
             when {
-                json.has("vocals_url") && json.has("instrumental_url") -> {
+                json.has("vocals_url") && json.has("instrumental_url") ->
                     buildDone(record, json.getString("vocals_url"), json.getString("instrumental_url"))
-                }
-                json.optString("status") == "processing" && json.has("job_id") -> {
-                    pollUntilDone(apiUrl, record, json.getString("job_id"))
-                }
-                else -> demoComplete(record)
+                json.optString("status") == "processing" && json.has("job_id") ->
+                    pollUntilDone(source, record, json.getString("job_id"))
+                else -> fail(record, "分离接口返回异常")
             }
         } catch (e: Exception) {
-            // request failed -> fall back to demo mode
-            demoComplete(record)
+            fail(record, "分离请求失败: ${e.message ?: ""}")
         }
     }
 
     private suspend fun pollUntilDone(
-        apiUrl: String,
+        source: CustomSourceImpl,
         record: VocalSeparationRecord,
         jobId: String,
     ): VocalSeparationRecord {
         repeat(40) { // ~2 minutes max
             delay(3000)
             try {
-                val resp = RemoteHttp.get("$apiUrl/status/$jobId")
+                val resp = RemoteHttp.get(source.separateStatusEndpoint(jobId))
                 val json = JSONObject(resp)
                 if (json.has("vocals_url") && json.has("instrumental_url")) {
                     return buildDone(record, json.getString("vocals_url"), json.getString("instrumental_url"))
@@ -135,26 +142,19 @@ class VocalSeparator(private val context: Context) {
                 // keep polling
             }
         }
-        return record.copy(status = "failed").also { store.upsert(it) }
+        return fail(record, "分离超时")
     }
 
     private fun buildDone(record: VocalSeparationRecord, vocal: String, instrumental: String): VocalSeparationRecord {
-        val done = record.copy(status = "done", vocalUrl = vocal, accompanimentUrl = instrumental)
+        val done = record.copy(status = "done", vocalUrl = vocal, accompanimentUrl = instrumental, note = "")
         store.upsert(done)
         return done
     }
 
-    private fun demoComplete(record: VocalSeparationRecord): VocalSeparationRecord {
-        // Demo mode: simulate completion after a short delay, placeholder urls.
-        var done = record.copy(status = "processing")
-        kotlinx.coroutines.runBlocking { delay(3000) }
-        done = done.copy(
-            status = "done",
-            vocalUrl = "vocal://${record.songId}",
-            accompanimentUrl = "accompaniment://${record.songId}",
-        )
-        store.upsert(done)
-        return done
+    private fun fail(record: VocalSeparationRecord, reason: String): VocalSeparationRecord {
+        val failed = record.copy(status = "failed", note = reason)
+        store.upsert(failed)
+        return failed
     }
 
     fun getStore() = store

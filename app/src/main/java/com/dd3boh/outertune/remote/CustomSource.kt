@@ -16,6 +16,7 @@ data class CustomSource(
     val urlPath: String = "/url",
     val lyricPath: String = "/lyric",
     val picPath: String = "/pic",
+    val separatePath: String = "/separate",
     val enabled: Boolean = true,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
@@ -26,6 +27,7 @@ data class CustomSource(
         put("urlPath", urlPath)
         put("lyricPath", lyricPath)
         put("picPath", picPath)
+        put("separatePath", separatePath)
         put("enabled", enabled)
     }
 
@@ -38,6 +40,7 @@ data class CustomSource(
             urlPath = o.optString("urlPath", "/url"),
             lyricPath = o.optString("lyricPath", "/lyric"),
             picPath = o.optString("picPath", "/pic"),
+            separatePath = o.optString("separatePath", "/separate"),
             enabled = o.optBoolean("enabled", true),
         )
     }

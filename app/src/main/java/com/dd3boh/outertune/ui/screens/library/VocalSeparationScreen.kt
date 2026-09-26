@@ -39,6 +39,7 @@ import com.dd3boh.outertune.ui.utils.backToMain
 @HiltViewModel
 class VocalSeparationViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val repository: com.dd3boh.outertune.remote.RemoteMusicRepository,
 ) : ViewModel() {
     private val store = VocalSeparationStore(context)
     private val _records = MutableStateFlow<List<VocalSeparationRecord>>(emptyList())
@@ -53,7 +54,7 @@ class VocalSeparationViewModel @Inject constructor(
 
     fun startSeparation(songId: String, title: String, artist: String, cover: String?) {
         viewModelScope.launch {
-            VocalSeparator(context).submit(
+            VocalSeparator(context, repository).submit(
                 VocalSeparationRecord(songId, title, artist, cover, status = "processing")
             )
             refresh()
@@ -149,6 +150,9 @@ private fun VocalSepRow(record: VocalSeparationRecord, onDelete: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(record.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
                 Text(record.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                if (record.status == "failed" && record.note.isNotBlank()) {
+                    Text(record.note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, maxLines = 2)
+                }
             }
             when (record.status) {
                 "processing" -> {
