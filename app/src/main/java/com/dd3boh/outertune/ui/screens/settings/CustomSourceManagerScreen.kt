@@ -93,12 +93,13 @@ private fun parseImportedSources(json: String): List<CustomSource> {
 private fun extractBaseUrl(o: JSONObject): String? {
     val fields = listOf("baseUrl", "api", "url", "host", "server", "serverUrl", "apiUrl", "endpoint")
     for (f in fields) {
-        v0@ when (val v = o.opt(f)) {
-            is String -> if (v.isNotBlank() && looksLikeHttpUrl(v)) return v
+        when (val v = o.opt(f)) {
+            is String -> validHttpUrl(v)?.let { return it }
             is JSONObject -> {
                 // e.g. "url": {"base": "https://..."}
-                v.optString("base").takeIf { it.isNotBlank() && looksLikeHttpUrl(it) }?.let { return it }
-                v.optString("url").takeIf { it.isNotBlank() && looksLikeHttpUrl(it) }?.let { return it }
+                validHttpUrl(v.optString("base"))?.let { return it }
+                validHttpUrl(v.optString("url"))?.let { return it }
+                validHttpUrl(v.optString("host"))?.let { return it }
             }
             else -> {}
         }
@@ -106,15 +107,20 @@ private fun extractBaseUrl(o: JSONObject): String? {
     return null
 }
 
-private fun looksLikeHttpUrl(s: String): Boolean =
-    s.startsWith("http://") || s.startsWith("https://")
+/**
+ * Return [s] if it is a usable http(s) URL with a non-empty host, else null.
+ * Rejects bare "https://" / "http://" and protocol-relative / host-less values.
+ */
+private fun validHttpUrl(s: String?): String? {
+    if (s.isNullOrBlank()) return null
+    if (!s.startsWith("http://") && !s.startsWith("https://")) return null
+    val host = hostOf(s) ?: return null
+    return s
+}
 
-/** Normalize: ensure trailing slash; reject URLs with an empty host. */
+/** Normalize: ensure trailing slash; caller already validated the host. */
 private fun normalizeBaseUrl(url: String): String {
-    val withSlash = if (url.endsWith("/")) url else "$url/"
-    // reject obviously broken hosts
-    hostOf(withSlash) ?: return url
-    return withSlash
+    return if (url.endsWith("/")) url else "$url/"
 }
 
 private fun hostOf(url: String): String? = runCatching {
@@ -447,6 +453,7 @@ private fun SourceForm(
             Button(
                 onClick = {
                     if (name.isBlank() || baseUrl.isBlank()) return@Button
+                    if (hostOf(baseUrl) == null) return@Button
                     onSave((existing ?: CustomSource(name = name, baseUrl = baseUrl)).copy(
                         name = name, baseUrl = baseUrl, searchPath = searchPath.ifBlank { "/search" },
                         urlPath = urlPath.ifBlank { "/url" }, lyricPath = lyricPath.ifBlank { "/lyric" },
